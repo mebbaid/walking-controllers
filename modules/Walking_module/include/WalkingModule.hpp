@@ -23,6 +23,8 @@
 #include <yarp/dev/IPositionDirect.h>
 #include <yarp/dev/PolyDriver.h>
 #include <yarp/os/RpcClient.h>
+#include <yarp/os/BufferedPort.h>
+#include <yarp/os/Bottle.h>
 
 // iDynTree
 #include <iDynTree/Core/VectorFixSize.h>
@@ -165,6 +167,9 @@ class WalkingModule:
     bool m_useWrenchFilter; /**< True if the wrench filter is used. */
 
     yarp::os::Port m_rpcPort; /**< Remote Procedure Call port. */
+    yarp::os::BufferedPort<yarp::os::Bottle> port;
+    double theta_r;
+
 
     bool m_newTrajectoryRequired; /**< if true a new trajectory will be merged soon. (after m_newTrajectoryMergeCounter - 2 cycles). */
     size_t m_newTrajectoryMergeCounter; /**< The new trajectory will be merged after m_newTrajectoryMergeCounter - 2 cycles. */

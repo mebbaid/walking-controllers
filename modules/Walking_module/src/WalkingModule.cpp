@@ -561,7 +561,7 @@ bool WalkingModule::configure(yarp::os::ResourceFinder& rf)
     m_newTrajectoryRequired = false;
     m_newTrajectoryMergeCounter = -1;
     m_robotState = WalkingFSM::Configured;
-
+    port.open("/robot_theta");
     yInfo() << "[configure] Ready to play!";
 
     return true;
@@ -606,6 +606,8 @@ bool WalkingModule::close()
     m_rightWrenchPort.close();
     m_leftWrenchPort.close();
 
+    port.close();
+    
     return true;
 }
 
@@ -1100,6 +1102,12 @@ bool WalkingModule::updateModule()
             m_firstStep = false;
 
     }
+
+    yarp::os::Bottle& output  = port.prepare();
+    output.clear();
+    output.addDouble(theta_r);
+    port.write(true);
+    
     return true;
 }
 
@@ -1203,6 +1211,9 @@ bool WalkingModule::getFeedbacks(unsigned int maxAttempts)
                     return false;
                 }
             }
+            
+            theta_r = m_FKSolver->getNeckOrientation().asRPY()(2);
+            
             return true;
         }
 
