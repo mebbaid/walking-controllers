@@ -23,8 +23,6 @@
 #include <yarp/dev/IPositionDirect.h>
 #include <yarp/dev/PolyDriver.h>
 #include <yarp/os/RpcClient.h>
-#include <yarp/os/BufferedPort.h>
-#include <yarp/os/Bottle.h>
 
 // iDynTree
 #include <iDynTree/Core/VectorFixSize.h>
@@ -115,8 +113,8 @@ class WalkingModule:
     std::deque<size_t> m_mergePoints; /**< Deque containing the time position of the merge points. */
 
     std::deque<bool> m_isLeftFixedFrame; /**< Deque containing when the main frame of the left foot is the fixed frame
-                                          In general a main frame of a foot is the fix frame only during the
-                                          stance and the switch out phases. */
+                                            In general a main frame of a foot is the fix frame only during the
+                                            stance and the switch out phases. */
 
     yarp::dev::PolyDriver m_robotDevice; /**< Main robot device. */
     std::vector<std::string> m_axesList; /**< Vector containing the name of the controlled joints. */
@@ -167,10 +165,6 @@ class WalkingModule:
     bool m_useWrenchFilter; /**< True if the wrench filter is used. */
 
     yarp::os::Port m_rpcPort; /**< Remote Procedure Call port. */
-    yarp::os::BufferedPort<yarp::os::Bottle> port;
-    
-    
-    double theta_r;
 
     bool m_newTrajectoryRequired; /**< if true a new trajectory will be merged soon. (after m_newTrajectoryMergeCounter - 2 cycles). */
     size_t m_newTrajectoryMergeCounter; /**< The new trajectory will be merged after m_newTrajectoryMergeCounter - 2 cycles. */
@@ -321,6 +315,13 @@ class WalkingModule:
     bool generateFirstTrajectories();
 
     /**
+     * Generate the first trajectory. (onTheFly)
+     * @param leftToRightTransform transformation between left and right feet.
+     * @return true in case of success and false otherwise.
+     */
+    bool generateFirstTrajectories(const iDynTree::Transform &leftToRightTransform);
+
+    /**
      * Ask for a new trajectory (The trajectory will be evaluated by a thread).
      * @param initTime is the initial time of the trajectory;
      * @param isLeftSwinging todo wrong name?;
@@ -379,7 +380,7 @@ public:
      * This allows you to put the robot in a home position for walking.
      * @return true in case of success and false otherwise.
      */
-    virtual bool prepareRobot();
+    virtual bool prepareRobot(bool onTheFly = false);
 
     /**
      * Start walking.
@@ -396,3 +397,4 @@ public:
     virtual bool setGoal(double x, double y);
 };
 #endif
+
