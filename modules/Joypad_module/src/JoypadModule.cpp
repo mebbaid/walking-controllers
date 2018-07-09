@@ -142,6 +142,8 @@ bool JoypadModule::configure(yarp::os::ResourceFinder &rf)
         return false;
     }
 
+    //CVirt ports
+
     // get the interface
     if (!m_joypad.view(m_joypadController))
     {
@@ -176,10 +178,18 @@ bool JoypadModule::configure(yarp::os::ResourceFinder &rf)
     m_joypadInputPortName = value->asString();
 
     m_rpcPort.open(m_joypadOutputPortName);
+
+    //CVirt ports check
+    if(m_joypadOutputPortName.compare("/joypad/CVirt/rpc:o") !=0) {
     if(!yarp::os::Network::connect(m_joypadOutputPortName, m_joypadInputPortName))
         yInfo() << "Unable to connect to port " << m_joypadOutputPortName << " to "
                 << m_joypadInputPortName
                 << " I'll try to connect the port in the updateModule";
+        }
+        port.open("/CVirtData");
+        yarp::os::Network::connect("/CybAxis/out", port.getName());
+
+        yInfo() << "m_joypadOutputPortName: " << m_joypadOutputPortName ;
 
     return true;
 }
@@ -208,7 +218,17 @@ bool JoypadModule::updateModule()
     if(yarp::os::Network::isConnected(m_joypadOutputPortName,
                                       m_joypadInputPortName))
     {
+        //grap CVirt data
+        input = port.read();
+                        if (input != NULL){
+                                for (i = 0; i < input->size(); i++) {
+                                        CVdata[i] = input->get(i).asDouble();
+                                        //std::cout << "Mydata" << CVdata[i] << std::endl;
+                                }
+        }
+
         double x, y;
+        if (m_joypadOutputPortName != "/joypad/CVirt/rpc:o") {
         m_joypadController->getAxis(0, x);
         m_joypadController->getAxis(1, y);
 
@@ -216,6 +236,11 @@ bool JoypadModule::updateModule()
         y = -m_scaleY * deadzone(y);
 
         std::swap(x,y);
+        }
+        else {
+        x = CVdata[0];
+        y = CVdata[1];
+        }
 
         yarp::os::Bottle cmd, outcome;
         cmd.addString("setGoal");
