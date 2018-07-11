@@ -1106,7 +1106,7 @@ bool WalkingModule::updateModule()
     yarp::os::Bottle& output  = port.prepare();
     output.clear();
     output.addDouble(theta_r);
-    port.write(true);
+    port.write(false);
     
     return true;
 }
