@@ -177,6 +177,8 @@ public:
      * @return world_H_root_frame.
      */
     iDynTree::Transform getRootLinkToWorldTransform();
+    
+    iDynTree::Transform getFramesRelativeTransform(std::string frameA, std::string frameB);
 
     /**
      * Return the root link velocity.

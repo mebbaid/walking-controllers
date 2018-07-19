@@ -452,3 +452,9 @@ bool WalkingFK::getCoMJacobian(iDynTree::MatrixDynSize &jacobian)
 {
     return m_kinDyn.getCenterOfMassJacobian(jacobian);
 }
+
+iDynTree::Transform WalkingFK::getFramesRelativeTransform(std::string frameA, std::string frameB)
+{
+  return m_kinDyn.getRelativeTransform(m_kinDyn.getFrameIndex(frameA),m_kinDyn.getFrameIndex(frameB));
+}
+

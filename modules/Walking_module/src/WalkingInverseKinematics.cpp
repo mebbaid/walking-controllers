@@ -169,6 +169,7 @@ bool WalkingIK::initialize(yarp::os::Searchable& ikOption, const iDynTree::Model
     if(m_useHandRetargeting)
     {
       m_handFrame = ikOption.check("hand_frame",yarp::os::Value("r_hand")).asString();
+      m_handRefFrame = ikOption.check("hand_ref_frame",yarp::os::Value("root_link")).asString();
       m_handInfoPortName = ikOption.check("hand_info_port",yarp::os::Value("/handport")).asString();
       m_handWeightWalking = ikOption.check("hand_weight_walking",yarp::os::Value(0.01)).asDouble();
       m_handWeightRetargeting = ikOption.check("hand_weight_retargeting",yarp::os::Value(10)).asDouble();
@@ -507,18 +508,21 @@ bool WalkingIK::handRetargetingOn()
   return m_useHandRetargeting;
 }
 
-bool WalkingIK::setHandPosition(yarp::sig::Vector& handPos)
+bool WalkingIK::setHandPosition(yarp::sig::Vector& handPos, iDynTree::Transform refToWorld)
 {
   iDynTree::Position newPos;
   newPos(0) = handPos(0);
   newPos(1) = handPos(1);
   newPos(2) = handPos(2);
+  newPos = refToWorld*newPos;
   m_handTransform.setPosition(newPos);
+  return true;
 }
 
 bool WalkingIK::setHandTargetWeight(double w)
 {
   m_handTargetWeight = w;
+  return true;
 }
 
 double WalkingIK::getHandTargetWeightWalking()
@@ -530,3 +534,9 @@ double WalkingIK::getHandTargetWeightReatrgeting()
 {
   return m_handWeightRetargeting;
 }
+
+std::string WalkingIK::getHandRefFrame()
+{
+  return m_handRefFrame;
+}
+

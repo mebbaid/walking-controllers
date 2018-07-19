@@ -71,6 +71,7 @@ class WalkingIK
     // Hand retargeting
     bool m_useHandRetargeting;
     std::string m_handFrame;
+    std::string m_handRefFrame;
     iDynTree::Transform m_handTransform;
     double m_handWeightWalking;
     double m_handWeightRetargeting;
@@ -158,8 +159,9 @@ public:
     double desiredJointWeight();
     
     std::string getHandPortName();
+    std::string getHandRefFrame();
     bool handRetargetingOn();
-    bool setHandPosition(yarp::sig::Vector& handPos);
+    bool setHandPosition(yarp::sig::Vector& handPos, iDynTree::Transform refToWorld);
     bool setHandTargetWeight(double w);
     double getHandTargetWeightWalking();
     double getHandTargetWeightReatrgeting();

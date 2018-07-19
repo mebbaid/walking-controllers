@@ -1016,7 +1016,7 @@ bool WalkingModule::updateModule()
                     yarp::sig::Vector handDataVec(handData->size());
                     for(int i = 0; i < handData->size(); i++)
                         handDataVec(i) = handData->get(i).asDouble();
-                    m_IKSolver->setHandPosition(handDataVec);
+                    m_IKSolver->setHandPosition(handDataVec, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
                     if(m_robotState == WalkingFSM::Stance)
                     {
                       m_IKSolver->setHandTargetWeight(m_IKSolver->getHandTargetWeightReatrgeting());
