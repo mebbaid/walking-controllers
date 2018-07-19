@@ -480,6 +480,20 @@ bool WalkingModule::configure(yarp::os::ResourceFinder& rf)
     // initialize the inverse kinematics solver
     m_IKSolver = std::make_unique<WalkingIK>();
     yarp::os::Bottle& inverseKinematicsSolverOptions = rf.findGroup("INVERSE_KINEMATICS_SOLVER");
+
+	//hand retargeting
+	if(m_IKSolver->handRetargetingOn())
+	{
+	  yarp::os::Bottle* handData = m_handInfoPort.read(true);
+	  if(handData != NULL)
+	  {
+	    yarp::sig::Vector handDataVec(handData->size());
+	    for(int i = 0; i < handData->size(); i++)
+		handDataVec(i) = handData->get(i).asDouble();
+	    m_IKSolver->setHandPosition(handDataVec, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
+	  }
+	}
+
     if(!m_IKSolver->initialize(inverseKinematicsSolverOptions, m_loader.model(), m_axesList))
     {
         yError() << "[configure] Failed to configure the ik solver";
@@ -1010,23 +1024,31 @@ bool WalkingModule::updateModule()
                 //hand retargeting
                 if(m_IKSolver->handRetargetingOn())
                 {
-                  yarp::os::Bottle* handData = m_handInfoPort.read(false);
+                  yarp::os::Bottle* handData;
+                  if(m_robotState == WalkingFSM::Stance)
+                  {
+	             yInfo() << "----Waiting hand data from port.";
+                     handData = m_handInfoPort.read(true);
+                  } else
+                  {
+	             yInfo() << "----Reading hand data from port.";
+                     handData = m_handInfoPort.read(false);
+                  }
                   if(handData != NULL)
                   {
                     yarp::sig::Vector handDataVec(handData->size());
                     for(int i = 0; i < handData->size(); i++)
                         handDataVec(i) = handData->get(i).asDouble();
                     m_IKSolver->setHandPosition(handDataVec, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
-                    if(m_robotState == WalkingFSM::Stance)
-                    {
-                      m_IKSolver->setHandTargetWeight(m_IKSolver->getHandTargetWeightReatrgeting());
-                    } else if(m_robotState == WalkingFSM::Walking)
-                    {
-                      m_IKSolver->setHandTargetWeight(m_IKSolver->getHandTargetWeightWalking());
+	            if(m_robotState == WalkingFSM::Stance)
+	            {
+            		m_IKSolver->setHandTargetWeight(m_IKSolver->getHandTargetWeightWalking());
                     } else
-                    {
-                      m_IKSolver->setHandTargetWeight(1e-08);
-                    }
+ 		    {
+                    	m_IKSolver->setHandTargetWeight(m_IKSolver->getHandTargetWeightReatrgeting());
+		    }
+		   yInfo() << "----Desired hand pos: " << handDataVec.toString();
+		   yInfo() << "----Actual hand pos: " << m_FKSolver->getFramesRelativeTransform(m_IKSolver->getHandRefFrame(),"r_hand").getPosition().toString();
                   }
                 }
                 
@@ -1666,10 +1688,21 @@ bool WalkingModule::prepareRobot(bool onTheFly)
     }
     
     //hand retargeting
-    if(m_IKSolver->handRetargetingOn())
-    {
-      m_IKSolver->setHandTargetWeight(1e-08);
-    }
+	if(m_IKSolver->handRetargetingOn())
+	{
+	  yarp::os::Bottle* handData = m_handInfoPort.read(true);
+	  if(handData != NULL)
+	  {
+	    yarp::sig::Vector handDataVec(handData->size());
+	    for(int i = 0; i < handData->size(); i++)
+		handDataVec(i) = handData->get(i).asDouble();
+	    m_IKSolver->setHandPosition(handDataVec, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
+            m_IKSolver->setHandTargetWeight(m_IKSolver->getHandTargetWeightWalking());
+
+	   yInfo() << "----Desired hand pos: " << handDataVec.toString();
+	   yInfo() << "----Actual hand pos: " << m_FKSolver->getFramesRelativeTransform("root_link",m_IKSolver->getHandRefFrame()).getPosition().toString();
+	  }
+        }
 
     if(!m_IKSolver->computeIK(m_leftTrajectory.front(), m_rightTrajectory.front(),
                               desiredCoMPosition, m_qDesired))
