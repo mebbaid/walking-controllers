@@ -1010,10 +1010,13 @@ bool WalkingModule::updateModule()
                 //hand retargeting
                 if(m_IKSolver->handRetargetingOn())
                 {
-                  yarp::sig::Vector* handData = m_handInfoPort.read(false);
+                  yarp::os::Bottle* handData = m_handInfoPort.read(false);
                   if(handData != NULL)
                   {
-                    m_IKSolver->setHandPosition(*handData);
+                    yarp::sig::Vector handDataVec(handData->size());
+                    for(int i = 0; i < handData->size(); i++)
+                        handDataVec(i) = handData->get(i).asDouble();
+                    m_IKSolver->setHandPosition(handDataVec);
                     if(m_robotState == WalkingFSM::Stance)
                     {
                       m_IKSolver->setHandTargetWeight(m_IKSolver->getHandTargetWeightReatrgeting());

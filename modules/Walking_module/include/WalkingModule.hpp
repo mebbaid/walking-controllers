@@ -179,7 +179,7 @@ class WalkingModule:
     iDynTree::Vector2 m_desiredPosition;
     
     //hand retargeting
-    yarp::os::BufferedPort<yarp::sig::Vector> m_handInfoPort;
+    yarp::os::BufferedPort<yarp::os::Bottle> m_handInfoPort;
 
     // debug
     std::unique_ptr<iCub::ctrl::Integrator> m_velocityIntegral{nullptr};
