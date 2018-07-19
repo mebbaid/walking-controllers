@@ -164,6 +164,16 @@ bool WalkingIK::initialize(yarp::os::Searchable& ikOption, const iDynTree::Model
         yInfo() << "Max CPU time: " << maxCpuTime;
         yInfo() << "Joint Regularization (RAD): " << m_jointRegularization.toString();
     }
+    
+    m_useHandRetargeting = ikOption.check("useHandRetargeting",yarp::os::Value(false)).asBool();
+    if(m_useHandRetargeting)
+    {
+      m_handFrame = ikOption.check("hand_frame",yarp::os::Value("r_hand")).asString();
+      m_handInfoPortName = ikOption.check("hand_info_port",yarp::os::Value("/handport")).asString();
+      m_handWeightWalking = ikOption.check("hand_weight_walking",yarp::os::Value(0.01)).asDouble();
+      m_handWeightRetargeting = ikOption.check("hand_weight_retargeting",yarp::os::Value(10)).asDouble();
+      m_handTargetWeight = 1e-08;
+    }
 
     return prepareIK();
 }
@@ -300,6 +310,13 @@ bool WalkingIK::prepareIK()
     dummygrav.zero();
 
     m_prepared = true;
+    
+    if(m_useHandRetargeting)
+    {
+      m_handTransform = iDynTree::Transform::Identity();
+      m_ik.addPositionTarget(m_handFrame,m_handTransform.getPosition(),m_handTargetWeight);
+      m_ik.setTargetResolutionMode(m_handFrame, iDynTree::InverseKinematicsTreatTargetAsConstraintNone);
+    }
 
     return true;
 }
@@ -379,6 +396,12 @@ bool WalkingIK::computeIK(const iDynTree::Transform& leftTransform, const iDynTr
     }
 
     m_ik.setCOMTarget(desiredCoMPosition, 100.0);
+    
+    // Hand retargeting
+    if(m_useHandRetargeting)
+    {
+      m_ik.updatePositionTarget(m_handFrame,m_handTransform.getPosition(),m_handTargetWeight);
+    }
 
     ok = m_ik.setCurrentRobotConfiguration(m_baseTransform,m_feedback);
     if(!ok){
@@ -471,4 +494,39 @@ bool WalkingIK::setDesiredJointsWeight(double weight)
 double WalkingIK::desiredJointWeight()
 {
     return m_jointRegularizationWeight;
+}
+
+
+std::string WalkingIK::getHandPortName()
+{
+  return m_handInfoPortName;
+}
+
+bool WalkingIK::handRetargetingOn()
+{
+  return m_useHandRetargeting;
+}
+
+bool WalkingIK::setHandPosition(yarp::sig::Vector& handPos)
+{
+  iDynTree::Position newPos;
+  newPos(0) = handPos(0);
+  newPos(1) = handPos(1);
+  newPos(2) = handPos(2);
+  m_handTransform.setPosition(newPos);
+}
+
+bool WalkingIK::setHandTargetWeight(double w)
+{
+  m_handTargetWeight = w;
+}
+
+double WalkingIK::getHandTargetWeightWalking()
+{
+  return m_handWeightWalking;
+}
+
+double WalkingIK::getHandTargetWeightReatrgeting()
+{
+  return m_handWeightRetargeting;
 }

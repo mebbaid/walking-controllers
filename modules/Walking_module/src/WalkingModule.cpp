@@ -321,6 +321,7 @@ bool WalkingModule::configureRobot(const yarp::os::Searchable& rf)
         m_minJointsLimit(i) = -iDynTree::deg2rad(max);
         m_maxJointsLimit(i) = iDynTree::deg2rad(max);
     }
+        
     return true;
 }
 
@@ -545,6 +546,17 @@ bool WalkingModule::configure(yarp::os::ResourceFinder& rf)
             yError() << "[configure] Unable to configure the logger.";
             return false;
         }
+    }
+    
+    //hand retargeting
+    if(m_IKSolver->handRetargetingOn())
+    {
+      m_handInfoPort.open("/walking-coordinator/handInfo:i");
+      if(!yarp::os::Network::connect(m_IKSolver->getHandPortName(), "/walking-coordinator/handInfo:i"))
+      {
+        yError() << "Unable to connect to port " << m_IKSolver->getHandPortName();
+        return false;
+      }
     }
 
     // time profiler
@@ -994,7 +1006,27 @@ bool WalkingModule::updateModule()
                     yError() << "[updateModule] Error while setting the feedback to the inverse Kinematics.";
                     return false;
                 }
-
+                
+                //hand retargeting
+                if(m_IKSolver->handRetargetingOn())
+                {
+                  yarp::sig::Vector* handData = m_handInfoPort.read(false);
+                  if(handData != NULL)
+                  {
+                    m_IKSolver->setHandPosition(*handData);
+                    if(m_robotState == WalkingFSM::Stance)
+                    {
+                      m_IKSolver->setHandTargetWeight(m_IKSolver->getHandTargetWeightReatrgeting());
+                    } else if(m_robotState == WalkingFSM::Walking)
+                    {
+                      m_IKSolver->setHandTargetWeight(m_IKSolver->getHandTargetWeightWalking());
+                    } else
+                    {
+                      m_IKSolver->setHandTargetWeight(1e-08);
+                    }
+                  }
+                }
+                
                 if(!m_IKSolver->computeIK(m_leftTrajectory.front(), m_rightTrajectory.front(),
                                           desiredCoMPosition, m_qDesired))
                 {
@@ -1628,6 +1660,12 @@ bool WalkingModule::prepareRobot(bool onTheFly)
             yError() << "[prepareRobot] Error updating the inertia to world frame rotation.";
             return false;
         }
+    }
+    
+    //hand retargeting
+    if(m_IKSolver->handRetargetingOn())
+    {
+      m_IKSolver->setHandTargetWeight(1e-08);
     }
 
     if(!m_IKSolver->computeIK(m_leftTrajectory.front(), m_rightTrajectory.front(),

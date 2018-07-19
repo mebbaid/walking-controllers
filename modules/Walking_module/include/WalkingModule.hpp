@@ -177,6 +177,9 @@ class WalkingModule:
     std::mutex m_mutex; /**< Mutex. */
 
     iDynTree::Vector2 m_desiredPosition;
+    
+    //hand retargeting
+    yarp::os::BufferedPort<yarp::sig::Vector> m_handInfoPort;
 
     // debug
     std::unique_ptr<iCub::ctrl::Integrator> m_velocityIntegral{nullptr};

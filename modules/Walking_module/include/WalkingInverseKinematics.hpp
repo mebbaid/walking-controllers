@@ -10,6 +10,9 @@
 #ifndef ICUB_WALKINGIKV2_H
 #define ICUB_WALKINGIKV2_H
 
+// Yarp
+#include <yarp/os/BufferedPort.h>
+
 // iDynTree
 #include <iDynTree/KinDynComputations.h>
 #include <iDynTree/InverseKinematics.h>
@@ -48,7 +51,7 @@ class WalkingIK
 
     iDynTree::Transform m_baseTransform;
     iDynTree::Rotation  m_additionalRotation;
-    iDynTree::Rotation  m_inertial_R_world;
+    iDynTree::Rotation  m_inertial_R_world;    
 
     iDynTree::VectorDynSize m_jointRegularization, m_guess, m_feedback, m_qResult;
 
@@ -64,6 +67,16 @@ class WalkingIK
     bool m_prepared;
 
     double m_additionalRotationWeight, m_jointRegularizationWeight;
+    
+    // Hand retargeting
+    bool m_useHandRetargeting;
+    std::string m_handFrame;
+    iDynTree::Transform m_handTransform;
+    double m_handWeightWalking;
+    double m_handWeightRetargeting;
+    std::string m_handInfoPortName;
+    bool m_receivedHandValue;
+    double m_handTargetWeight;
 
     bool prepareIK();
 
@@ -143,6 +156,14 @@ public:
     bool setDesiredJointsWeight(double weight);
 
     double desiredJointWeight();
+    
+    std::string getHandPortName();
+    bool handRetargetingOn();
+    bool setHandPosition(yarp::sig::Vector& handPos);
+    bool setHandTargetWeight(double w);
+    double getHandTargetWeightWalking();
+    double getHandTargetWeightReatrgeting();
+    
 };
 
 #endif // end of ICUB_WALKINGIK_H
