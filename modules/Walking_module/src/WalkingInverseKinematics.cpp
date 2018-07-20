@@ -174,6 +174,7 @@ bool WalkingIK::initialize(yarp::os::Searchable& ikOption, const iDynTree::Model
       m_handWeightWalking = ikOption.check("hand_weight_walking",yarp::os::Value(0.01)).asDouble();
       m_handWeightRetargeting = ikOption.check("hand_weight_retargeting",yarp::os::Value(10)).asDouble();
       m_handTargetWeight = m_handWeightWalking;
+      m_handSmoothDelay = ikOption.check("hand_smooth_delay",yarp::os::Value(0.1)).asDouble();
     }
 
     return prepareIK();
@@ -542,6 +543,11 @@ double WalkingIK::getHandTargetWeightWalking()
 double WalkingIK::getHandTargetWeightReatrgeting()
 {
   return m_handWeightRetargeting;
+}
+
+double WalkingIK::getHandSmoothDelay()
+{
+  return m_handSmoothDelay;
 }
 
 std::string WalkingIK::getHandRefFrame()

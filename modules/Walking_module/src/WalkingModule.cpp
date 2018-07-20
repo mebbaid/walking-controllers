@@ -481,17 +481,20 @@ bool WalkingModule::configure(yarp::os::ResourceFinder& rf)
     m_IKSolver = std::make_unique<WalkingIK>();
     yarp::os::Bottle& inverseKinematicsSolverOptions = rf.findGroup("INVERSE_KINEMATICS_SOLVER");
 
-	//hand retargeting
-	if(m_IKSolver->handRetargetingOn())
-	{
-	  yarp::os::Bottle* handData = m_handInfoPort.read(true);
-	  if(handData != NULL)
-	  {
-	    for(int i = 0; i < handData->size(); i++)
-		m_handDataVec(i) = handData->get(i).asDouble();
-	    m_IKSolver->setHandPosition(m_handDataVec, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
-	  }
-	}
+    //hand retargeting
+    if(m_IKSolver->handRetargetingOn())
+    {
+      yarp::os::Bottle* handData = m_handInfoPort.read(true);
+      if(handData != NULL)
+      {
+        for(int i = 0; i < handData->size(); i++)
+          m_handDataVecNoSmooth(i) = handData->get(i).asDouble();
+        m_desiredHandTrajSmoother->init(m_handDataVecNoSmooth);
+        m_desiredHandTrajSmoother->computeNextValues(m_handDataVecNoSmooth);
+        m_handDataVec = m_desiredHandTrajSmoother->getPos();
+        m_IKSolver->setHandPosition(m_handDataVec, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
+      }
+    }
 
     if(!m_IKSolver->initialize(inverseKinematicsSolverOptions, m_loader.model(), m_axesList))
     {
@@ -570,8 +573,12 @@ bool WalkingModule::configure(yarp::os::ResourceFinder& rf)
         yError() << "Unable to connect to port " << m_IKSolver->getHandPortName();
         return false;
       }
+      m_handDataVecNoSmooth.resize(3);
+      m_handDataVecNoSmooth.zero();
       m_handDataVec.resize(3);
       m_handDataVec.zero();
+      m_desiredHandTrajSmoother = std::make_unique<iCub::ctrl::minJerkTrajGen>(m_handDataVec.size(),
+                                                     m_dT, m_IKSolver->getHandSmoothDelay());
     }
 
     // time profiler
@@ -627,6 +634,7 @@ bool WalkingModule::close()
     m_rightWrenchFilter.reset(nullptr);
     m_positionFilter.reset(nullptr);
     m_velocityFilter.reset(nullptr);
+    m_desiredHandTrajSmoother.reset(nullptr);
 
     // close the ports
     m_rpcPort.close();
@@ -1026,30 +1034,26 @@ bool WalkingModule::updateModule()
                 if(m_IKSolver->handRetargetingOn())
                 {
                   yarp::os::Bottle* handData;
-//                   if(m_robotState == WalkingFSM::Stance)
-//                   {
-// 	             yInfo() << "----Waiting hand data from port.";
-//                      handData = m_handInfoPort.read(true);
-//                   } else
-//                   {
-// 	             yInfo() << "----Reading hand data from port.";
-                     handData = m_handInfoPort.read(false);
-//                   }
                   if(handData != NULL)
                   {
+                    handData = m_handInfoPort.read(false);
                     for(int i = 0; i < handData->size(); i++)
-                        m_handDataVec(i) = handData->get(i).asDouble();
-                    m_IKSolver->setHandPosition(m_handDataVec, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
-	            if(m_robotState == WalkingFSM::Stance)
-	            {
-            		m_IKSolver->setHandTargetWeight(m_IKSolver->getHandTargetWeightReatrgeting());
-                    } else
- 		    {
-                    	m_IKSolver->setHandTargetWeight(m_IKSolver->getHandTargetWeightWalking());
-		    }
-		   yInfo() << "----Desired hand pos: " << m_handDataVec.toString();
-		   yInfo() << "----Actual hand pos: " << m_FKSolver->getFramesRelativeTransform(m_IKSolver->getHandRefFrame(),"r_hand").getPosition().toString();
+                    {
+                      m_handDataVecNoSmooth(i) = handData->get(i).asDouble();
+                    }
+                    m_desiredHandTrajSmoother->computeNextValues(m_handDataVecNoSmooth);
                   }
+                  m_handDataVec = m_desiredHandTrajSmoother->getPos();
+                  m_IKSolver->setHandPosition(m_handDataVec, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
+                  if(m_robotState == WalkingFSM::Stance)
+                  {
+                    m_IKSolver->setHandTargetWeight(m_IKSolver->getHandTargetWeightReatrgeting());
+                  } else
+                  {
+                    m_IKSolver->setHandTargetWeight(m_IKSolver->getHandTargetWeightWalking());
+                  }
+                  yInfo() << "----Desired hand pos: " << m_handDataVec.toString();
+                  yInfo() << "----Actual hand pos: " << m_FKSolver->getFramesRelativeTransform(m_IKSolver->getHandRefFrame(),"r_hand").getPosition().toString();
                 }
                 
                 if(!m_IKSolver->computeIK(m_leftTrajectory.front(), m_rightTrajectory.front(),
@@ -1111,7 +1115,7 @@ bool WalkingModule::updateModule()
                                       rightFoot.getPosition(), rightFoot.getRotation().asRPY(),
                                       m_leftTrajectory.front().getPosition(), m_leftTrajectory.front().getRotation().asRPY(),
                                       m_rightTrajectory.front().getPosition(), m_rightTrajectory.front().getRotation().asRPY(),
-                                      errorL, errorR, m_handDataVec, m_FKSolver->getFramesRelativeTransform("root_link",m_IKSolver->getHandRefFrame()).getPosition());
+                                      errorL, errorR, m_handDataVecNoSmooth, m_handDataVec, m_FKSolver->getFramesRelativeTransform("root_link",m_IKSolver->getHandRefFrame()).getPosition());
 
             // m_walkingLogger->sendData(m_dqDesired_osqp, m_dqDesired_qpOASES);
         }
@@ -1694,13 +1698,14 @@ bool WalkingModule::prepareRobot(bool onTheFly)
 	  if(handData != NULL)
 	  {
 	    for(int i = 0; i < handData->size(); i++)
-		m_handDataVec(i) = handData->get(i).asDouble();
-	    m_IKSolver->setHandPosition(m_handDataVec, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
-            m_IKSolver->setHandTargetWeight(m_IKSolver->getHandTargetWeightWalking());
-
-	   yInfo() << "----Desired hand pos: " << m_handDataVec.toString();
-	   yInfo() << "----Actual hand pos: " << m_FKSolver->getFramesRelativeTransform("root_link",m_IKSolver->getHandRefFrame()).getPosition().toString();
-	  }
+              m_handDataVecNoSmooth(i) = handData->get(i).asDouble();
+            m_desiredHandTrajSmoother->computeNextValues(m_handDataVecNoSmooth);
+          }
+          m_handDataVec = m_desiredHandTrajSmoother->getPos();
+          m_IKSolver->setHandPosition(m_handDataVec, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
+          m_IKSolver->setHandTargetWeight(m_IKSolver->getHandTargetWeightWalking());
+          yInfo() << "----Desired hand pos: " << m_handDataVec.toString();
+          yInfo() << "----Actual hand pos: " << m_FKSolver->getFramesRelativeTransform(m_IKSolver->getHandRefFrame(),"r_hand").getPosition().toString();
         }
 
     if(!m_IKSolver->computeIK(m_leftTrajectory.front(), m_rightTrajectory.front(),
@@ -2014,6 +2019,7 @@ bool WalkingModule::startWalking()
                     "lf_err_roll", "lf_err_pitch", "lf_err_yaw",
                     "rf_err_x", "rf_err_y", "rf_err_z",
                     "rf_err_roll", "rf_err_pitch", "rf_err_yaw",
+                    "rh_des_raw_x", "rh_des_raw_y", "rh_des_raw_z",
                     "rh_des_x", "rh_des_y", "rh_des_z",
                     "rh_meas_x", "rh_meas_y", "rh_meas_z"});
         // "torso_pitch", "torso_roll", "torso_yaw",

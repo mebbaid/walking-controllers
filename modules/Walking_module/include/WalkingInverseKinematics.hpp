@@ -78,6 +78,7 @@ class WalkingIK
     std::string m_handInfoPortName;
     bool m_receivedHandValue;
     double m_handTargetWeight;
+    double m_handSmoothDelay;
 
     bool prepareIK();
 
@@ -165,6 +166,7 @@ public:
     bool setHandTargetWeight(double w);
     double getHandTargetWeightWalking();
     double getHandTargetWeightReatrgeting();
+    double getHandSmoothDelay();
     
 };
 
