@@ -97,7 +97,7 @@ class WalkingModule:
 
     double m_onTheFlySmoothingTime; /**< Duration of the on the fly procedure. */
     double m_additionalRotationWeightDesired; /**< Desired additional rotational weight matrix. */
-    double m_desiredJointsWeight; /**< Desired joint weight matrix. */
+    yarp::sig::Vector m_desiredJointsWeight; /**< Desired joint weight matrix. */
     yarp::sig::Vector m_desiredJointInRadYarp; /**< Desired joint position (regularization task). */
 
     std::deque<iDynTree::Transform> m_leftTrajectory; /**< Deque containing the trajectory of the left foot. */

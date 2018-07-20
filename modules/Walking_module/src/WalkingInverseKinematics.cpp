@@ -35,7 +35,6 @@ WalkingIK::WalkingIK()
     , m_inertial_R_world(iDynTree::Rotation::Identity())
     , m_prepared(false)
     , m_additionalRotationWeight(1.0)
-    , m_jointRegularizationWeight(0.5)
 {}
 
 WalkingIK::~WalkingIK()
@@ -48,7 +47,6 @@ bool WalkingIK::initialize(yarp::os::Searchable& ikOption, const iDynTree::Model
 {
     solverVerbosity = ikOption.check("solver-verbosity",yarp::os::Value(0)).asInt();
     maxCpuTime = ikOption.check("max-cpu-time",yarp::os::Value(0.2)).asDouble();
-    m_jointRegularizationWeight = ikOption.check("joint_regularization_weight", yarp::os::Value(0.5)).asDouble();
     std::string lFootFrame = ikOption.check("left_foot_frame", yarp::os::Value("l_sole")).asString();
     std::string rFootFrame = ikOption.check("right_foot_frame", yarp::os::Value("r_sole")).asString();
     std::string solverName = ikOption.check("solver_name", yarp::os::Value("mumps")).asString();
@@ -64,6 +62,7 @@ bool WalkingIK::initialize(yarp::os::Searchable& ikOption, const iDynTree::Model
             yInfo() << "Desired rotation for the additional frame:\n" << m_additionalRotation.toString();
     }
     yarp::os::Value jointRegularization = ikOption.find("jointRegularization");
+    yarp::os::Value regularizationWeights = ikOption.find("regularizationWeight");
 
     if(!setModel(model, jointList))
     {
@@ -140,6 +139,44 @@ bool WalkingIK::initialize(yarp::os::Searchable& ikOption, const iDynTree::Model
             m_jointRegularization(i) = guessValue->get(i).asDouble()*iDynTree::deg2rad(1);
         }
         m_guess = m_jointRegularization;
+    }
+
+    m_jointsRegularizationWeights.resize(m_jointRegularization.size());
+
+    if (!(regularizationWeights.isNull())) {
+        if (regularizationWeights.isList()) {
+            yarp::os::Bottle *weightsValues = regularizationWeights.asList();
+
+            if (weightsValues->size() == 1){
+                if (weightsValues->get(0).isDouble() || weightsValues->get(0).isInt()){
+                    iDynTree::toEigen(m_jointsRegularizationWeights).setConstant(regularizationWeights.asDouble());
+                } else {
+                    yError("Error while reading the regularizationWeight list.");
+                    return false;
+                }
+            } else {
+
+                if (static_cast<size_t>(weightsValues->size()) != m_ik.reducedModel().getNrOfDOFs()){
+                    yError("[ERROR WALKIK] The regularization list should have the same dimension of the number of DoFs of the provided model. Model = %lu, Guess = %d.", m_ik.reducedModel().getNrOfDOFs(), weightsValues->size());
+                    return false;
+                }
+
+                for(int i = 0; i < weightsValues->size(); ++i){
+                    if(!weightsValues->get(i).isDouble() && !weightsValues->get(i).isInt()){
+                        yError("The regularizationWeight values are expected to be double");
+                    }
+                    m_jointsRegularizationWeights(i) = weightsValues->get(i).asDouble();
+                }
+            }
+
+        } else if (regularizationWeights.isDouble() || regularizationWeights.isInt()){
+            iDynTree::toEigen(m_jointsRegularizationWeights).setConstant(regularizationWeights.asDouble());
+        } else {
+            yError("Error while reading the regularizationWeight field.");
+            return false;
+        }
+    } else {
+        iDynTree::toEigen(m_jointsRegularizationWeights).setConstant(0.5);
     }
 
     if(!this->setFootFrame("left",lFootFrame))
@@ -425,7 +462,7 @@ bool WalkingIK::computeIK(const iDynTree::Transform& leftTransform, const iDynTr
         return false;
     }
 
-    ok = m_ik.setDesiredReducedJointConfiguration(m_jointRegularization, m_jointRegularizationWeight);
+    ok = m_ik.setDesiredReducedJointConfiguration(m_jointRegularization, m_jointsRegularizationWeights);
     if(!ok){
         yError() << "WalkingIK: Error while setting the desired joint configuration.";
         return false;
@@ -491,21 +528,20 @@ double WalkingIK::additionalRotationWeight()
     return m_additionalRotationWeight;
 }
 
-bool WalkingIK::setDesiredJointsWeight(double weight)
+bool WalkingIK::setDesiredJointsWeights(const iDynTree::VectorDynSize &desiredJointsWeights)
 {
-    if (weight < 0){
-        yError() << "The desiredJointWeight is supposed to be non-negative.";
+    if (desiredJointsWeights.size() != m_jointRegularization.size()){
+        yError() << "The desiredJointsWeights are supposed to have the same dimension of the joint regularizations.";
         return false;
     }
-    m_jointRegularizationWeight = weight;
+    m_jointsRegularizationWeights = desiredJointsWeights;
     return true;
 }
 
-double WalkingIK::desiredJointWeight()
+const iDynTree::VectorDynSize &WalkingIK::desiredJointsWeights()
 {
-    return m_jointRegularizationWeight;
+    return m_jointsRegularizationWeights;
 }
-
 
 std::string WalkingIK::getHandPortName()
 {

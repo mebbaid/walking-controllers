@@ -1009,9 +1009,14 @@ bool WalkingModule::updateModule()
                         return false;
                     }
 
-                    m_desiredJointWeightSmoother->computeNextValues(yarp::sig::Vector(1, m_desiredJointsWeight));
-                    double jointWeight = m_desiredJointWeightSmoother->getPos()[0];
-                    if (!m_IKSolver->setDesiredJointsWeight(jointWeight))
+                    m_desiredJointWeightSmoother->computeNextValues(m_desiredJointsWeight);
+                    iDynTree::VectorDynSize jointsWeight;
+                    yarp::sig::Vector jointsWeightYarp = m_desiredJointWeightSmoother->getPos();
+                    for(int i = 0; i < jointsWeightYarp.size(); i++)
+                    {
+                      jointsWeight(i) = jointsWeightYarp(i);
+                    }
+                    if (!m_IKSolver->setDesiredJointsWeights(jointsWeight))
                     {
                         yError() << "[updateModule] Unable to set the desired joint weight.";
                         return false;
@@ -1143,7 +1148,12 @@ bool WalkingModule::updateModule()
                 return false;
             }
 
-            if (!m_IKSolver->setDesiredJointsWeight(m_desiredJointsWeight))
+            iDynTree::VectorDynSize jointWeights;
+            for(int i = 0; i < m_desiredJointsWeight.size(); i++)
+            {
+              jointWeights(i) = m_desiredJointsWeight(i);
+            }
+            if (!m_IKSolver->setDesiredJointsWeights(jointWeights))
             {
                 yError() << "[updateModule] Unable to set the desired joint weight.";
                 return false;
@@ -2190,7 +2200,7 @@ bool WalkingModule::onTheFlyStartWalking(const double smoothingTime)
     m_heightSmoother = std::make_unique<iCub::ctrl::minJerkTrajGen>(1, m_dT, smoothingTime / 1.5);
     m_additionalRotationWeightSmoother = std::make_unique<iCub::ctrl::minJerkTrajGen>(1, m_dT,
                                                                                       smoothingTime);
-    m_desiredJointWeightSmoother = std::make_unique<iCub::ctrl::minJerkTrajGen>(1, m_dT,
+    m_desiredJointWeightSmoother = std::make_unique<iCub::ctrl::minJerkTrajGen>(m_desiredJointsWeight.size(), m_dT,
                                                                                 smoothingTime);
 
     // set the initial position of the trajectories (desired quantities and gains)
@@ -2204,8 +2214,12 @@ bool WalkingModule::onTheFlyStartWalking(const double smoothingTime)
 
     // the initial weight for the joints position is 10 times the desired weight related to rotation
     // Magic trick!
-    m_desiredJointWeightSmoother->init(yarp::sig::Vector(1, 10 * m_additionalRotationWeightDesired));
-    m_desiredJointsWeight = m_IKSolver->desiredJointWeight();
+    iDynTree::VectorDynSize jointsWeight = m_IKSolver->desiredJointsWeights();
+    for(int i = 0; i < jointsWeight.size(); i++)
+    {
+      m_desiredJointsWeight(i) = jointsWeight(i);
+    }
+    m_desiredJointWeightSmoother->init(m_desiredJointsWeight);
 
     m_desiredJointInRadYarp.resize(m_actuatedDOFs);
     iDynTree::toYarp(m_IKSolver->desiredJointConfiguration(), m_desiredJointInRadYarp);

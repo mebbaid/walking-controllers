@@ -66,7 +66,8 @@ class WalkingIK
 
     bool m_prepared;
 
-    double m_additionalRotationWeight, m_jointRegularizationWeight;
+    double m_additionalRotationWeight;
+    iDynTree::VectorDynSize m_jointsRegularizationWeights;
     
     // Hand retargeting
     bool m_useHandRetargeting;
@@ -155,9 +156,9 @@ public:
 
     double additionalRotationWeight();
 
-    bool setDesiredJointsWeight(double weight);
+    bool setDesiredJointsWeights(const iDynTree::VectorDynSize& desiredJointsWeights);
 
-    double desiredJointWeight();
+    const iDynTree::VectorDynSize& desiredJointsWeights();
     
     std::string getHandPortName();
     std::string getHandRefFrame();
