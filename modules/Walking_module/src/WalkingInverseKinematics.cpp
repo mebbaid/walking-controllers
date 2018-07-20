@@ -314,8 +314,16 @@ bool WalkingIK::prepareIK()
     
     if(m_useHandRetargeting)
     {
-      m_ik.addPositionTarget(m_handFrame,m_handTransform.getPosition(),m_handTargetWeight);
-      m_ik.setTargetResolutionMode(m_handFrame, iDynTree::InverseKinematicsTreatTargetAsConstraintPositionOnly);
+      if(!m_ik.addPositionTarget(m_handFrame,m_handTransform.getPosition(),m_handTargetWeight))
+      {
+        yError() << "Could not set position target on " << m_handFrame;
+        return false;
+      }
+      if(!m_ik.setTargetResolutionMode(m_handFrame, iDynTree::InverseKinematicsTreatTargetAsConstraintNone))
+      {      
+        yError() << "Could not set resolution mode on " << m_handFrame;
+        return false;
+      }
     }
 
     return true;
@@ -400,7 +408,7 @@ bool WalkingIK::computeIK(const iDynTree::Transform& leftTransform, const iDynTr
     // Hand retargeting
     if(m_useHandRetargeting)
     {
-      std::cout << "---- In IK, hand pos: " << m_handTransform.getPosition().toString() << std::endl;
+      yInfo() << "---- In IK, hand pos, weight: " << m_handTransform.getPosition().toString() << ", " << m_handTargetWeight;
       m_ik.updatePositionTarget(m_handFrame,m_handTransform.getPosition(),m_handTargetWeight);
     }
 

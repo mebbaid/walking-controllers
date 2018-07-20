@@ -1025,15 +1025,15 @@ bool WalkingModule::updateModule()
                 if(m_IKSolver->handRetargetingOn())
                 {
                   yarp::os::Bottle* handData;
-                  if(m_robotState == WalkingFSM::Stance)
-                  {
-	             yInfo() << "----Waiting hand data from port.";
-                     handData = m_handInfoPort.read(true);
-                  } else
-                  {
-	             yInfo() << "----Reading hand data from port.";
+//                   if(m_robotState == WalkingFSM::Stance)
+//                   {
+// 	             yInfo() << "----Waiting hand data from port.";
+//                      handData = m_handInfoPort.read(true);
+//                   } else
+//                   {
+// 	             yInfo() << "----Reading hand data from port.";
                      handData = m_handInfoPort.read(false);
-                  }
+//                   }
                   if(handData != NULL)
                   {
                     yarp::sig::Vector handDataVec(handData->size());
