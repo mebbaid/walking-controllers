@@ -175,6 +175,7 @@ bool WalkingIK::initialize(yarp::os::Searchable& ikOption, const iDynTree::Model
       m_handWeightRetargeting = ikOption.check("hand_weight_retargeting",yarp::os::Value(10)).asDouble();
       m_handTargetWeight = m_handWeightWalking;
       m_handSmoothDelay = ikOption.check("hand_smooth_delay",yarp::os::Value(0.1)).asDouble();
+      m_handTransform = iDynTree::Transform::Identity();
     }
 
     return prepareIK();
