@@ -180,6 +180,7 @@ class WalkingModule:
     
     //hand retargeting
     yarp::os::BufferedPort<yarp::os::Bottle> m_handInfoPort;
+    yarp::sig::Vector m_handDataVec;
 
     // debug
     std::unique_ptr<iCub::ctrl::Integrator> m_velocityIntegral{nullptr};
