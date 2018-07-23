@@ -1138,7 +1138,7 @@ bool WalkingModule::updateModule()
                                       rightFoot.getPosition(), rightFoot.getRotation().asRPY(),
                                       m_leftTrajectory.front().getPosition(), m_leftTrajectory.front().getRotation().asRPY(),
                                       m_rightTrajectory.front().getPosition(), m_rightTrajectory.front().getRotation().asRPY(),
-                                      errorL, errorR, m_handDataVecNoSmooth, m_handDataVec, m_FKSolver->getFramesRelativeTransform("root_link",m_IKSolver->getHandRefFrame()).getPosition());
+                                      errorL, errorR, m_handDataVecNoSmooth, m_handDataVec, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getHandRefFrame(),"r_hand").getPosition());
 
             // m_walkingLogger->sendData(m_dqDesired_osqp, m_dqDesired_qpOASES);
         }
