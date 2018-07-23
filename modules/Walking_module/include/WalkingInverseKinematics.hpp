@@ -71,13 +71,16 @@ class WalkingIK
     
     // Hand retargeting
     bool m_useHandRetargeting;
-    std::string m_handFrame;
+    bool m_useHandRetargetingRight;
+    bool m_useHandRetargetingLeft;
+    std::string m_RHandFrame;
+    std::string m_LHandFrame;
     std::string m_handRefFrame;
-    iDynTree::Transform m_handTransform;
+    iDynTree::Transform m_RHandTransform;
+    iDynTree::Transform m_LHandTransform;
     double m_handWeightWalking;
     double m_handWeightRetargeting;
     std::string m_handInfoPortName;
-    bool m_receivedHandValue;
     double m_handTargetWeight;
     double m_handSmoothDelay;
 
@@ -162,8 +165,13 @@ public:
     
     std::string getHandPortName();
     std::string getHandRefFrame();
+    std::string getRHandFrame();
+    std::string getLHandFrame();
     bool handRetargetingOn();
-    bool setHandPosition(yarp::sig::Vector& handPos, iDynTree::Transform refToWorld);
+    bool handRetargetingLeft();
+    bool handRetargetingRight();
+    bool setRHandPosition(yarp::sig::Vector& handPos, iDynTree::Transform refToWorld);
+    bool setLHandPosition(yarp::sig::Vector& handPos, iDynTree::Transform refToWorld);
     bool setHandTargetWeight(double w);
     double getHandTargetWeightWalking();
     double getHandTargetWeightReatrgeting();

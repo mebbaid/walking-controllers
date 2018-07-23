@@ -205,14 +205,24 @@ bool WalkingIK::initialize(yarp::os::Searchable& ikOption, const iDynTree::Model
     m_useHandRetargeting = ikOption.check("useHandRetargeting",yarp::os::Value(false)).asBool();
     if(m_useHandRetargeting)
     {
-      m_handFrame = ikOption.check("hand_frame",yarp::os::Value("r_hand")).asString();
+      m_RHandFrame = ikOption.find("hand_frame_r").asString();//,yarp::os::Value("r_hand")).asString();
+      if(m_RHandFrame!="")
+        m_useHandRetargetingRight = true;
+      else
+        m_useHandRetargetingRight = false;
+      m_LHandFrame = ikOption.find("hand_frame_l").asString();//,yarp::os::Value("l_hand")).asString();
+      if(m_LHandFrame!="")
+        m_useHandRetargetingLeft = true;
+      else
+        m_useHandRetargetingLeft = false;
       m_handRefFrame = ikOption.check("hand_ref_frame",yarp::os::Value("root_link")).asString();
       m_handInfoPortName = ikOption.check("hand_info_port",yarp::os::Value("/handport")).asString();
       m_handWeightWalking = ikOption.check("hand_weight_walking",yarp::os::Value(0.01)).asDouble();
       m_handWeightRetargeting = ikOption.check("hand_weight_retargeting",yarp::os::Value(10)).asDouble();
       m_handTargetWeight = m_handWeightWalking;
       m_handSmoothDelay = ikOption.check("hand_smooth_delay",yarp::os::Value(0.1)).asDouble();
-      m_handTransform = iDynTree::Transform::Identity();
+      m_RHandTransform = iDynTree::Transform::Identity();
+      m_LHandTransform = iDynTree::Transform::Identity();
     }
 
     return prepareIK();
@@ -353,15 +363,31 @@ bool WalkingIK::prepareIK()
     
     if(m_useHandRetargeting)
     {
-      if(!m_ik.addPositionTarget(m_handFrame,m_handTransform.getPosition(),m_handTargetWeight))
+      if(m_useHandRetargetingLeft)
       {
-        yError() << "Could not set position target on " << m_handFrame;
-        return false;
+        if(!m_ik.addPositionTarget(m_LHandFrame,m_LHandTransform.getPosition(),m_handTargetWeight))
+        {
+          yError() << "Could not set position target on " << m_LHandFrame;
+          return false;
+        }
+        if(!m_ik.setTargetResolutionMode(m_LHandFrame, iDynTree::InverseKinematicsTreatTargetAsConstraintNone))
+        {      
+          yError() << "Could not set resolution mode on " << m_LHandFrame;
+          return false;
+        }
       }
-      if(!m_ik.setTargetResolutionMode(m_handFrame, iDynTree::InverseKinematicsTreatTargetAsConstraintNone))
-      {      
-        yError() << "Could not set resolution mode on " << m_handFrame;
-        return false;
+      if(m_useHandRetargetingRight)
+      {
+        if(!m_ik.addPositionTarget(m_RHandFrame,m_RHandTransform.getPosition(),m_handTargetWeight))
+        {
+          yError() << "Could not set position target on " << m_RHandFrame;
+          return false;
+        }
+        if(!m_ik.setTargetResolutionMode(m_RHandFrame, iDynTree::InverseKinematicsTreatTargetAsConstraintNone))
+        {      
+          yError() << "Could not set resolution mode on " << m_RHandFrame;
+          return false;
+        }
       }
     }
 
@@ -447,8 +473,16 @@ bool WalkingIK::computeIK(const iDynTree::Transform& leftTransform, const iDynTr
     // Hand retargeting
     if(m_useHandRetargeting)
     {
-      yInfo() << "---- In IK, hand pos, weight: " << m_handTransform.getPosition().toString() << ", " << m_handTargetWeight;
-      m_ik.updatePositionTarget(m_handFrame,m_handTransform.getPosition(),m_handTargetWeight);
+      if(m_useHandRetargetingLeft)
+      {
+//         yInfo() << "---- In IK, hand pos, weight: " << m_LHandTransform.getPosition().toString() << ", " << m_handTargetWeight;
+        m_ik.updatePositionTarget(m_LHandFrame,m_LHandTransform.getPosition(),m_handTargetWeight);
+      }
+      if(m_useHandRetargetingRight)
+      {
+        //         yInfo() << "---- In IK, hand pos, weight: " << m_LHandTransform.getPosition().toString() << ", " << m_handTargetWeight;
+        m_ik.updatePositionTarget(m_RHandFrame,m_RHandTransform.getPosition(),m_handTargetWeight);
+      }
     }
 
     ok = m_ik.setCurrentRobotConfiguration(m_baseTransform,m_feedback);
@@ -554,15 +588,27 @@ bool WalkingIK::handRetargetingOn()
   return m_useHandRetargeting;
 }
 
-bool WalkingIK::setHandPosition(yarp::sig::Vector& handPos, iDynTree::Transform refToWorld)
+bool WalkingIK::setRHandPosition(yarp::sig::Vector& handPos, iDynTree::Transform refToWorld)
 {
-  m_handTransform = iDynTree::Transform::Identity();
+  m_RHandTransform = iDynTree::Transform::Identity();
   iDynTree::Position newPos;
   newPos(0) = handPos(0);
   newPos(1) = handPos(1);
   newPos(2) = handPos(2);
   newPos = refToWorld*newPos;
-  m_handTransform.setPosition(newPos);
+  m_RHandTransform.setPosition(newPos);
+  return true;
+}
+
+bool WalkingIK::setLHandPosition(yarp::sig::Vector& handPos, iDynTree::Transform refToWorld)
+{
+  m_LHandTransform = iDynTree::Transform::Identity();
+  iDynTree::Position newPos;
+  newPos(0) = handPos(0);
+  newPos(1) = handPos(1);
+  newPos(2) = handPos(2);
+  newPos = refToWorld*newPos;
+  m_LHandTransform.setPosition(newPos);
   return true;
 }
 
@@ -590,5 +636,25 @@ double WalkingIK::getHandSmoothDelay()
 std::string WalkingIK::getHandRefFrame()
 {
   return m_handRefFrame;
+}
+
+std::string WalkingIK::getRHandFrame()
+{
+  return m_RHandFrame;
+}
+
+std::string WalkingIK::getLHandFrame()
+{
+  return m_LHandFrame;
+}
+
+bool WalkingIK::handRetargetingLeft()
+{
+  return m_useHandRetargetingLeft;
+}
+
+bool WalkingIK::handRetargetingRight()
+{
+  return m_useHandRetargetingRight;
 }
 

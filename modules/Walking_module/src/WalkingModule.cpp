@@ -481,27 +481,6 @@ bool WalkingModule::configure(yarp::os::ResourceFinder& rf)
     m_IKSolver = std::make_unique<WalkingIK>();
     yarp::os::Bottle& inverseKinematicsSolverOptions = rf.findGroup("INVERSE_KINEMATICS_SOLVER");
 
-
-/*    if(m_IKSolver->handRetargetingOn())
-    {
-      yarp::os::Bottle* handData = m_handInfoPort.read(true);
-      if(handData != NULL)
-      {
-        for(int i = 0; i < handData->size(); i++)
-          m_handDataVecNoSmooth(i) = handData->get(i).asDouble();
-
-        std::cout << "-----------" << handData->toString() << std::endl;
-        std::cout << "-----------" << m_handDataVecNoSmooth.toString() << std::endl;
-
-        m_desiredHandTrajSmoother->init(m_handDataVecNoSmooth);
-        m_desiredHandTrajSmoother->computeNextValues(m_handDataVecNoSmooth);
-        m_handDataVec = m_desiredHandTrajSmoother->getPos();
-        m_IKSolver->setHandPosition(m_handDataVec, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
-      }
-    }
-*/
-
-
     if(!m_IKSolver->initialize(inverseKinematicsSolverOptions, m_loader.model(), m_axesList))
     {
         yError() << "[configure] Failed to configure the ik solver";
@@ -550,25 +529,57 @@ bool WalkingModule::configure(yarp::os::ResourceFinder& rf)
         yError() << "Unable to connect to port " << m_IKSolver->getHandPortName();
         return false;
       }
-      m_handDataVecNoSmooth.resize(3);
+      
+      if(m_IKSolver->handRetargetingLeft() && m_IKSolver->handRetargetingRight())
+      {
+        m_handDataVecNoSmooth.resize(6);
+        m_handDataVec.resize(6);
+      }
+      
       m_handDataVecNoSmooth.zero();
-      m_handDataVec.resize(3);
       m_handDataVec.zero();
       m_desiredHandTrajSmoother = std::make_unique<iCub::ctrl::minJerkTrajGen>(m_handDataVec.size(),
                                                      m_dT, m_IKSolver->getHandSmoothDelay());
 
-  yarp::os::Bottle* handData = m_handInfoPort.read(true);
-  if(handData != NULL)
-  {
-    for(int i = 0; i < handData->size(); i++)
-    {
-      m_handDataVecNoSmooth(i) = handData->get(i).asDouble();
-    }
-  }
+      yarp::os::Bottle* handData = m_handInfoPort.read(true);
+      if(handData != NULL)
+      {
+        for(int i = 0; i < handData->size(); i++)
+        {
+          m_handDataVecNoSmooth(i) = handData->get(i).asDouble();
+        }
+      }
       m_desiredHandTrajSmoother->init(m_handDataVecNoSmooth);
       m_desiredHandTrajSmoother->computeNextValues(m_handDataVecNoSmooth);
       m_handDataVec = m_desiredHandTrajSmoother->getPos();
-      m_IKSolver->setHandPosition(m_handDataVec, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
+      yarp::sig::Vector handDataLeft(3);
+      yarp::sig::Vector handDataRight(3);
+      if(m_IKSolver->handRetargetingLeft() && m_IKSolver->handRetargetingRight())
+      {
+        for(int i = 0; i < handDataLeft.size(); i++)
+        {
+          handDataRight(i) = m_handDataVec(i);
+          handDataLeft(i) = m_handDataVec(i+3);
+        }
+        m_IKSolver->setRHandPosition(handDataRight, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
+        m_IKSolver->setLHandPosition(handDataLeft, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
+      }
+      else if(m_IKSolver->handRetargetingRight())
+      {
+        for(int i = 0; i < handDataRight.size(); i++)
+        {
+          handDataRight(i) = m_handDataVec(i);
+        }
+        m_IKSolver->setRHandPosition(handDataRight, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
+      }
+      else if(m_IKSolver->handRetargetingLeft())
+      {
+        for(int i = 0; i < handDataLeft.size(); i++)
+        {
+          handDataLeft(i) = m_handDataVec(i);
+        }
+        m_IKSolver->setRHandPosition(handDataLeft, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
+      }
     }
 
     // initialize the linear inverted pendulum model
@@ -1067,7 +1078,35 @@ bool WalkingModule::updateModule()
                   }
                   m_desiredHandTrajSmoother->computeNextValues(m_handDataVecNoSmooth);
                   m_handDataVec = m_desiredHandTrajSmoother->getPos();
-                  m_IKSolver->setHandPosition(m_handDataVec, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
+                  yarp::sig::Vector handDataLeft(3);
+                  yarp::sig::Vector handDataRight(3);
+                  if(m_IKSolver->handRetargetingLeft() && m_IKSolver->handRetargetingRight())
+                  {
+                    for(int i = 0; i < handDataLeft.size(); i++)
+                    {
+                      handDataRight(i) = m_handDataVec(i);
+                      handDataLeft(i) = m_handDataVec(i+3);
+                    }
+                    m_IKSolver->setRHandPosition(handDataRight, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
+                    m_IKSolver->setLHandPosition(handDataLeft, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
+                  }
+                  else if(m_IKSolver->handRetargetingRight())
+                  {
+                    for(int i = 0; i < handDataRight.size(); i++)
+                    {
+                      handDataRight(i) = m_handDataVec(i);
+                    }
+                    m_IKSolver->setRHandPosition(handDataRight, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
+                  }
+                  else if(m_IKSolver->handRetargetingLeft())
+                  {
+                    for(int i = 0; i < handDataLeft.size(); i++)
+                    {
+                      handDataLeft(i) = m_handDataVec(i);
+                    }
+                    m_IKSolver->setRHandPosition(handDataLeft, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
+                  }
+                  // Change weight
                   if(m_robotState == WalkingFSM::Stance)
                   {
                     m_IKSolver->setHandTargetWeight(m_IKSolver->getHandTargetWeightReatrgeting());
@@ -1075,8 +1114,8 @@ bool WalkingModule::updateModule()
                   {
                     m_IKSolver->setHandTargetWeight(m_IKSolver->getHandTargetWeightWalking());
                   }
-                  yInfo() << "----Desired hand pos: " << m_handDataVec.toString();
-                  yInfo() << "----Actual hand pos: " << m_FKSolver->getFramesRelativeTransform(m_IKSolver->getHandRefFrame(),"r_hand").getPosition().toString();
+//                   yInfo() << "----Desired hand pos: " << m_handDataVec.toString();
+//                   yInfo() << "----Actual hand pos: " << m_FKSolver->getFramesRelativeTransform(m_IKSolver->getHandRefFrame(),"r_hand").getPosition().toString();
                 }
                 
                 if(!m_IKSolver->computeIK(m_leftTrajectory.front(), m_rightTrajectory.front(),
@@ -1131,14 +1170,57 @@ bool WalkingModule::updateModule()
         {
             auto leftFoot = m_FKSolver->getLeftFootToWorldTransform();
             auto rightFoot = m_FKSolver->getRightFootToWorldTransform();
-            m_walkingLogger->sendData(measuredDCM, m_DCMPositionDesired.front(), m_DCMVelocityDesired.front(),
-                                      measuredZMP, desiredZMP, measuredCoM,
-                                      desiredCoMPositionXY, desiredCoMVelocityXY,
-                                      leftFoot.getPosition(), leftFoot.getRotation().asRPY(),
-                                      rightFoot.getPosition(), rightFoot.getRotation().asRPY(),
-                                      m_leftTrajectory.front().getPosition(), m_leftTrajectory.front().getRotation().asRPY(),
-                                      m_rightTrajectory.front().getPosition(), m_rightTrajectory.front().getRotation().asRPY(),
-                                      errorL, errorR, m_handDataVecNoSmooth, m_handDataVec, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getHandRefFrame(),"r_hand").getPosition());
+            if(m_IKSolver->handRetargetingOn())
+            {
+              if(m_IKSolver->handRetargetingLeft()&&m_IKSolver->handRetargetingRight())
+              {
+                m_walkingLogger->sendData(measuredDCM, m_DCMPositionDesired.front(), m_DCMVelocityDesired.front(),
+                                          measuredZMP, desiredZMP, measuredCoM,
+                                          desiredCoMPositionXY, desiredCoMVelocityXY,
+                                          leftFoot.getPosition(), leftFoot.getRotation().asRPY(),
+                                          rightFoot.getPosition(), rightFoot.getRotation().asRPY(),
+                                          m_leftTrajectory.front().getPosition(), m_leftTrajectory.front().getRotation().asRPY(),
+                                          m_rightTrajectory.front().getPosition(), m_rightTrajectory.front().getRotation().asRPY(),
+                                          errorL, errorR, m_handDataVecNoSmooth, m_handDataVec, 
+                                          m_FKSolver->getFramesRelativeTransform(m_IKSolver->getHandRefFrame(),m_IKSolver->getRHandFrame()).getPosition(),
+                                          m_FKSolver->getFramesRelativeTransform(m_IKSolver->getHandRefFrame(),m_IKSolver->getLHandFrame()).getPosition());
+              }
+              else if(m_IKSolver->handRetargetingLeft())
+              {
+                m_walkingLogger->sendData(measuredDCM, m_DCMPositionDesired.front(), m_DCMVelocityDesired.front(),
+                measuredZMP, desiredZMP, measuredCoM,
+                desiredCoMPositionXY, desiredCoMVelocityXY,
+                leftFoot.getPosition(), leftFoot.getRotation().asRPY(),
+                                                         rightFoot.getPosition(), rightFoot.getRotation().asRPY(),
+                                                         m_leftTrajectory.front().getPosition(), m_leftTrajectory.front().getRotation().asRPY(),
+                                                         m_rightTrajectory.front().getPosition(), m_rightTrajectory.front().getRotation().asRPY(),
+                                                         errorL, errorR, m_handDataVecNoSmooth, m_handDataVec, 
+                                                          m_FKSolver->getFramesRelativeTransform(m_IKSolver->getHandRefFrame(),m_IKSolver->getLHandFrame()).getPosition());
+              }
+              else if(m_IKSolver->handRetargetingRight())
+              {
+                m_walkingLogger->sendData(measuredDCM, m_DCMPositionDesired.front(), m_DCMVelocityDesired.front(),
+                measuredZMP, desiredZMP, measuredCoM,
+                desiredCoMPositionXY, desiredCoMVelocityXY,
+                leftFoot.getPosition(), leftFoot.getRotation().asRPY(),
+                                                         rightFoot.getPosition(), rightFoot.getRotation().asRPY(),
+                                                         m_leftTrajectory.front().getPosition(), m_leftTrajectory.front().getRotation().asRPY(),
+                                                         m_rightTrajectory.front().getPosition(), m_rightTrajectory.front().getRotation().asRPY(),
+                                                         errorL, errorR, m_handDataVecNoSmooth, m_handDataVec, 
+                                                         m_FKSolver->getFramesRelativeTransform(m_IKSolver->getHandRefFrame(),m_IKSolver->getRHandFrame()).getPosition());
+              }
+            }
+            else
+            {
+              m_walkingLogger->sendData(measuredDCM, m_DCMPositionDesired.front(), m_DCMVelocityDesired.front(),
+                                        measuredZMP, desiredZMP, measuredCoM,
+                                        desiredCoMPositionXY, desiredCoMVelocityXY,
+                                        leftFoot.getPosition(), leftFoot.getRotation().asRPY(),
+                                        rightFoot.getPosition(), rightFoot.getRotation().asRPY(),
+                                        m_leftTrajectory.front().getPosition(), m_leftTrajectory.front().getRotation().asRPY(),
+                                        m_rightTrajectory.front().getPosition(), m_rightTrajectory.front().getRotation().asRPY(),
+                                        errorL, errorR);
+            }
 
             // m_walkingLogger->sendData(m_dqDesired_osqp, m_dqDesired_qpOASES);
         }
@@ -1726,17 +1808,47 @@ bool WalkingModule::prepareRobot(bool onTheFly)
 	  if(handData != NULL)
 	  {
 	    for(int i = 0; i < handData->size(); i++)
+            {
               m_handDataVecNoSmooth(i) = handData->get(i).asDouble();
+            }
+/*
+          std::cout << "-------In prepare: " << handData->toString() << std::endl;
+          std::cout << "-------In prepare: " << m_handDataVecNoSmooth.toString() << std::endl;*/
 
-        std::cout << "-------In prepare: " << handData->toString() << std::endl;
-        std::cout << "-------In prepare: " << m_handDataVecNoSmooth.toString() << std::endl;
-
-	  //m_desiredHandTrajSmoother->computeNextValues(m_handDataVecNoSmooth);
-	  m_handDataVec = m_handDataVecNoSmooth;//m_desiredHandTrajSmoother->getPos();
-	  m_IKSolver->setHandPosition(m_handDataVec, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
+	  m_desiredHandTrajSmoother->computeNextValues(m_handDataVecNoSmooth);
+          m_handDataVec = m_desiredHandTrajSmoother->getPos();
+          yarp::sig::Vector handDataLeft(3);
+          yarp::sig::Vector handDataRight(3);
+          if(m_IKSolver->handRetargetingLeft() && m_IKSolver->handRetargetingRight())
+          {
+            for(int i = 0; i < handDataLeft.size(); i++)
+            {
+              handDataRight(i) = m_handDataVec(i);
+              handDataLeft(i) = m_handDataVec(i+3);
+            }
+            m_IKSolver->setRHandPosition(handDataRight, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
+            m_IKSolver->setLHandPosition(handDataLeft, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
+          }
+          else if(m_IKSolver->handRetargetingRight())
+          {
+            for(int i = 0; i < handDataRight.size(); i++)
+            {
+              handDataRight(i) = m_handDataVec(i);
+            }
+            m_IKSolver->setRHandPosition(handDataRight, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
+          }
+          else if(m_IKSolver->handRetargetingLeft())
+          {
+            for(int i = 0; i < handDataLeft.size(); i++)
+            {
+              handDataLeft(i) = m_handDataVec(i);
+            }
+            m_IKSolver->setRHandPosition(handDataLeft, m_FKSolver->getFramesRelativeTransform(m_IKSolver->getLeftFootFrame(),m_IKSolver->getHandRefFrame()));
+          }
+          // In prepare use the same weight as walking?
 	  m_IKSolver->setHandTargetWeight(m_IKSolver->getHandTargetWeightWalking());
-	  yInfo() << "----Desired hand pos: " << m_handDataVec.toString();
-	  yInfo() << "----Actual hand pos: " << m_FKSolver->getFramesRelativeTransform(m_IKSolver->getHandRefFrame(),"r_hand").getPosition().toString();
+// 	  yInfo() << "----Desired hand pos: " << m_handDataVec.toString();
+// 	  yInfo() << "----Actual hand pos: " << m_FKSolver->getFramesRelativeTransform(m_IKSolver->getHandRefFrame(),"r_hand").getPosition().toString();
           }  
         }
 
@@ -2031,29 +2143,113 @@ bool WalkingModule::startWalking()
 
     if(m_dumpData)
     {
+      if(m_IKSolver->handRetargetingOn())
+      {
+        if(m_IKSolver->handRetargetingRight() && m_IKSolver->handRetargetingLeft())
+        {
+          m_walkingLogger->startRecord({"record","dcm_x", "dcm_y",
+            "dcm_des_x", "dcm_des_y",
+            "dcm_des_dx", "dcm_des_dy",
+            "zmp_x", "zmp_y",
+            "zmp_des_x", "zmp_des_y",
+            "com_x", "com_y", "com_z",
+            "com_des_x", "com_des_y",
+            "com_des_dx", "com_des_dy",
+            "lf_x", "lf_y", "lf_z",
+            "lf_roll", "lf_pitch", "lf_yaw",
+            "rf_x", "rf_y", "rf_z",
+            "rf_roll", "rf_pitch", "rf_yaw",
+            "lf_des_x", "lf_des_y", "lf_des_z",
+            "lf_des_roll", "lf_des_pitch", "lf_des_yaw",
+            "rf_des_x", "rf_des_y", "rf_des_z",
+            "rf_des_roll", "rf_des_pitch", "rf_des_yaw",
+            "lf_err_x", "lf_err_y", "lf_err_z",
+            "lf_err_roll", "lf_err_pitch", "lf_err_yaw",
+            "rf_err_x", "rf_err_y", "rf_err_z",
+            "rf_err_roll", "rf_err_pitch", "rf_err_yaw",
+            "rh_des_raw_x", "rh_des_raw_y", "rh_des_raw_z",
+            "lh_des_raw_x", "lh_des_raw_y", "lh_des_raw_z",
+            "rh_des_x", "rh_des_y", "rh_des_z",
+            "lh_des_x", "lh_des_y", "lh_des_z",
+            "rh_meas_x", "rh_meas_y", "rh_meas_z",
+            "lh_meas_x", "lh_meas_y", "lh_meas_z"});
+        }
+        else if(m_IKSolver->handRetargetingLeft())
+        {
+          m_walkingLogger->startRecord({"record","dcm_x", "dcm_y",
+          "dcm_des_x", "dcm_des_y",
+          "dcm_des_dx", "dcm_des_dy",
+          "zmp_x", "zmp_y",
+          "zmp_des_x", "zmp_des_y",
+          "com_x", "com_y", "com_z",
+          "com_des_x", "com_des_y",
+          "com_des_dx", "com_des_dy",
+          "lf_x", "lf_y", "lf_z",
+          "lf_roll", "lf_pitch", "lf_yaw",
+          "rf_x", "rf_y", "rf_z",
+          "rf_roll", "rf_pitch", "rf_yaw",
+          "lf_des_x", "lf_des_y", "lf_des_z",
+          "lf_des_roll", "lf_des_pitch", "lf_des_yaw",
+          "rf_des_x", "rf_des_y", "rf_des_z",
+          "rf_des_roll", "rf_des_pitch", "rf_des_yaw",
+          "lf_err_x", "lf_err_y", "lf_err_z",
+          "lf_err_roll", "lf_err_pitch", "lf_err_yaw",
+          "rf_err_x", "rf_err_y", "rf_err_z",
+          "rf_err_roll", "rf_err_pitch", "rf_err_yaw",
+          "lh_des_raw_x", "lh_des_raw_y", "lh_des_raw_z",
+          "lh_des_x", "lh_des_y", "lh_des_z",
+          "lh_meas_x", "lh_meas_y", "lh_meas_z"});
+        }
+        else if(m_IKSolver->handRetargetingRight())
+        {
+          m_walkingLogger->startRecord({"record","dcm_x", "dcm_y",
+          "dcm_des_x", "dcm_des_y",
+          "dcm_des_dx", "dcm_des_dy",
+          "zmp_x", "zmp_y",
+          "zmp_des_x", "zmp_des_y",
+          "com_x", "com_y", "com_z",
+          "com_des_x", "com_des_y",
+          "com_des_dx", "com_des_dy",
+          "lf_x", "lf_y", "lf_z",
+          "lf_roll", "lf_pitch", "lf_yaw",
+          "rf_x", "rf_y", "rf_z",
+          "rf_roll", "rf_pitch", "rf_yaw",
+          "lf_des_x", "lf_des_y", "lf_des_z",
+          "lf_des_roll", "lf_des_pitch", "lf_des_yaw",
+          "rf_des_x", "rf_des_y", "rf_des_z",
+          "rf_des_roll", "rf_des_pitch", "rf_des_yaw",
+          "lf_err_x", "lf_err_y", "lf_err_z",
+          "lf_err_roll", "lf_err_pitch", "lf_err_yaw",
+          "rf_err_x", "rf_err_y", "rf_err_z",
+          "rf_err_roll", "rf_err_pitch", "rf_err_yaw",
+          "rh_des_raw_x", "rh_des_raw_y", "rh_des_raw_z",
+          "rh_des_x", "rh_des_y", "rh_des_z",
+          "rh_meas_x", "rh_meas_y", "rh_meas_z"});
+        }
+      }
+      else
+      {
         m_walkingLogger->startRecord({"record","dcm_x", "dcm_y",
-                    "dcm_des_x", "dcm_des_y",
-                    "dcm_des_dx", "dcm_des_dy",
-                    "zmp_x", "zmp_y",
-                    "zmp_des_x", "zmp_des_y",
-                    "com_x", "com_y", "com_z",
-                    "com_des_x", "com_des_y",
-                    "com_des_dx", "com_des_dy",
-                    "lf_x", "lf_y", "lf_z",
-                    "lf_roll", "lf_pitch", "lf_yaw",
-                    "rf_x", "rf_y", "rf_z",
-                    "rf_roll", "rf_pitch", "rf_yaw",
-                    "lf_des_x", "lf_des_y", "lf_des_z",
-                    "lf_des_roll", "lf_des_pitch", "lf_des_yaw",
-                    "rf_des_x", "rf_des_y", "rf_des_z",
-                    "rf_des_roll", "rf_des_pitch", "rf_des_yaw",
-                    "lf_err_x", "lf_err_y", "lf_err_z",
-                    "lf_err_roll", "lf_err_pitch", "lf_err_yaw",
-                    "rf_err_x", "rf_err_y", "rf_err_z",
-                    "rf_err_roll", "rf_err_pitch", "rf_err_yaw",
-                    "rh_des_raw_x", "rh_des_raw_y", "rh_des_raw_z",
-                    "rh_des_x", "rh_des_y", "rh_des_z",
-                    "rh_meas_x", "rh_meas_y", "rh_meas_z"});
+          "dcm_des_x", "dcm_des_y",
+          "dcm_des_dx", "dcm_des_dy",
+          "zmp_x", "zmp_y",
+          "zmp_des_x", "zmp_des_y",
+          "com_x", "com_y", "com_z",
+          "com_des_x", "com_des_y",
+          "com_des_dx", "com_des_dy",
+          "lf_x", "lf_y", "lf_z",
+          "lf_roll", "lf_pitch", "lf_yaw",
+          "rf_x", "rf_y", "rf_z",
+          "rf_roll", "rf_pitch", "rf_yaw",
+          "lf_des_x", "lf_des_y", "lf_des_z",
+          "lf_des_roll", "lf_des_pitch", "lf_des_yaw",
+          "rf_des_x", "rf_des_y", "rf_des_z",
+          "rf_des_roll", "rf_des_pitch", "rf_des_yaw",
+          "lf_err_x", "lf_err_y", "lf_err_z",
+          "lf_err_roll", "lf_err_pitch", "lf_err_yaw",
+          "rf_err_x", "rf_err_y", "rf_err_z",
+          "rf_err_roll", "rf_err_pitch", "rf_err_yaw"});
+      }
         // "torso_pitch", "torso_roll", "torso_yaw",
         // "l_shoulder_pitch", "l_shoulder_roll", "l_shoulder_yaw", "l_elbow",
         // "r_shoulder_pitch", "r_shoulder_roll", "r_shoulder_yaw", "r_elbow",
@@ -2270,26 +2466,113 @@ bool WalkingModule::onTheFlyStartWalking(const double smoothingTime)
 
     if(m_dumpData)
     {
+      if(m_IKSolver->handRetargetingOn())
+      {
+        if(m_IKSolver->handRetargetingRight() && m_IKSolver->handRetargetingLeft())
+        {
+          m_walkingLogger->startRecord({"record","dcm_x", "dcm_y",
+            "dcm_des_x", "dcm_des_y",
+            "dcm_des_dx", "dcm_des_dy",
+            "zmp_x", "zmp_y",
+            "zmp_des_x", "zmp_des_y",
+            "com_x", "com_y", "com_z",
+            "com_des_x", "com_des_y",
+            "com_des_dx", "com_des_dy",
+            "lf_x", "lf_y", "lf_z",
+            "lf_roll", "lf_pitch", "lf_yaw",
+            "rf_x", "rf_y", "rf_z",
+            "rf_roll", "rf_pitch", "rf_yaw",
+            "lf_des_x", "lf_des_y", "lf_des_z",
+            "lf_des_roll", "lf_des_pitch", "lf_des_yaw",
+            "rf_des_x", "rf_des_y", "rf_des_z",
+            "rf_des_roll", "rf_des_pitch", "rf_des_yaw",
+            "lf_err_x", "lf_err_y", "lf_err_z",
+            "lf_err_roll", "lf_err_pitch", "lf_err_yaw",
+            "rf_err_x", "rf_err_y", "rf_err_z",
+            "rf_err_roll", "rf_err_pitch", "rf_err_yaw",
+            "rh_des_raw_x", "rh_des_raw_y", "rh_des_raw_z",
+            "lh_des_raw_x", "lh_des_raw_y", "lh_des_raw_z",
+            "rh_des_x", "rh_des_y", "rh_des_z",
+            "lh_des_x", "lh_des_y", "lh_des_z",
+            "rh_meas_x", "rh_meas_y", "rh_meas_z",
+            "lh_meas_x", "lh_meas_y", "lh_meas_z"});
+        }
+        else if(m_IKSolver->handRetargetingLeft())
+        {
+          m_walkingLogger->startRecord({"record","dcm_x", "dcm_y",
+            "dcm_des_x", "dcm_des_y",
+            "dcm_des_dx", "dcm_des_dy",
+            "zmp_x", "zmp_y",
+            "zmp_des_x", "zmp_des_y",
+            "com_x", "com_y", "com_z",
+            "com_des_x", "com_des_y",
+            "com_des_dx", "com_des_dy",
+            "lf_x", "lf_y", "lf_z",
+            "lf_roll", "lf_pitch", "lf_yaw",
+            "rf_x", "rf_y", "rf_z",
+            "rf_roll", "rf_pitch", "rf_yaw",
+            "lf_des_x", "lf_des_y", "lf_des_z",
+            "lf_des_roll", "lf_des_pitch", "lf_des_yaw",
+            "rf_des_x", "rf_des_y", "rf_des_z",
+            "rf_des_roll", "rf_des_pitch", "rf_des_yaw",
+            "lf_err_x", "lf_err_y", "lf_err_z",
+            "lf_err_roll", "lf_err_pitch", "lf_err_yaw",
+            "rf_err_x", "rf_err_y", "rf_err_z",
+            "rf_err_roll", "rf_err_pitch", "rf_err_yaw",
+            "lh_des_raw_x", "lh_des_raw_y", "lh_des_raw_z",
+            "lh_des_x", "lh_des_y", "lh_des_z",
+            "lh_meas_x", "lh_meas_y", "lh_meas_z"});
+        }
+        else if(m_IKSolver->handRetargetingRight())
+        {
+          m_walkingLogger->startRecord({"record","dcm_x", "dcm_y",
+            "dcm_des_x", "dcm_des_y",
+            "dcm_des_dx", "dcm_des_dy",
+            "zmp_x", "zmp_y",
+            "zmp_des_x", "zmp_des_y",
+            "com_x", "com_y", "com_z",
+            "com_des_x", "com_des_y",
+            "com_des_dx", "com_des_dy",
+            "lf_x", "lf_y", "lf_z",
+            "lf_roll", "lf_pitch", "lf_yaw",
+            "rf_x", "rf_y", "rf_z",
+            "rf_roll", "rf_pitch", "rf_yaw",
+            "lf_des_x", "lf_des_y", "lf_des_z",
+            "lf_des_roll", "lf_des_pitch", "lf_des_yaw",
+            "rf_des_x", "rf_des_y", "rf_des_z",
+            "rf_des_roll", "rf_des_pitch", "rf_des_yaw",
+            "lf_err_x", "lf_err_y", "lf_err_z",
+            "lf_err_roll", "lf_err_pitch", "lf_err_yaw",
+            "rf_err_x", "rf_err_y", "rf_err_z",
+            "rf_err_roll", "rf_err_pitch", "rf_err_yaw",
+            "rh_des_raw_x", "rh_des_raw_y", "rh_des_raw_z",
+            "rh_des_x", "rh_des_y", "rh_des_z",
+            "rh_meas_x", "rh_meas_y", "rh_meas_z"});
+        }
+      }
+      else
+      {
         m_walkingLogger->startRecord({"record","dcm_x", "dcm_y",
-                    "dcm_des_x", "dcm_des_y",
-                    "dcm_des_dx", "dcm_des_dy",
-                    "zmp_x", "zmp_y",
-                    "zmp_des_x", "zmp_des_y",
-                    "com_x", "com_y", "com_z",
-                    "com_des_x", "com_des_y",
-                    "com_des_dx", "com_des_dy",
-                    "lf_x", "lf_y", "lf_z",
-                    "lf_roll", "lf_pitch", "lf_yaw",
-                    "rf_x", "rf_y", "rf_z",
-                    "rf_roll", "rf_pitch", "rf_yaw",
-                    "lf_des_x", "lf_des_y", "lf_des_z",
-                    "lf_des_roll", "lf_des_pitch", "lf_des_yaw",
-                    "rf_des_x", "rf_des_y", "rf_des_z",
-                    "rf_des_roll", "rf_des_pitch", "rf_des_yaw",
-                    "lf_err_x", "lf_err_y", "lf_err_z",
-                    "lf_err_roll", "lf_err_pitch", "lf_err_yaw",
-                    "rf_err_x", "rf_err_y", "rf_err_z",
-                    "rf_err_roll", "rf_err_pitch", "rf_err_yaw"});
+          "dcm_des_x", "dcm_des_y",
+          "dcm_des_dx", "dcm_des_dy",
+          "zmp_x", "zmp_y",
+          "zmp_des_x", "zmp_des_y",
+          "com_x", "com_y", "com_z",
+          "com_des_x", "com_des_y",
+          "com_des_dx", "com_des_dy",
+          "lf_x", "lf_y", "lf_z",
+          "lf_roll", "lf_pitch", "lf_yaw",
+          "rf_x", "rf_y", "rf_z",
+          "rf_roll", "rf_pitch", "rf_yaw",
+          "lf_des_x", "lf_des_y", "lf_des_z",
+          "lf_des_roll", "lf_des_pitch", "lf_des_yaw",
+          "rf_des_x", "rf_des_y", "rf_des_z",
+          "rf_des_roll", "rf_des_pitch", "rf_des_yaw",
+          "lf_err_x", "lf_err_y", "lf_err_z",
+          "lf_err_roll", "lf_err_pitch", "lf_err_yaw",
+          "rf_err_x", "rf_err_y", "rf_err_z",
+          "rf_err_roll", "rf_err_pitch", "rf_err_yaw"});
+      }
     }
 
     m_robotState = WalkingFSM::OnTheFly;
