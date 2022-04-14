@@ -132,6 +132,7 @@ bool WalkingModule::configure(yarp::os::ResourceFinder& rf)
 {
     // module name (used as prefix for opened ports)
     m_useMPC = rf.check("use_mpc", yarp::os::Value(false)).asBool();
+    m_useLiftingPose = rf.check("use_liftingPose", yarp::os::Value(false)).asBool();
     m_useQPIK = rf.check("use_QP-IK", yarp::os::Value(false)).asBool();
     m_useOSQP = rf.check("use_osqp", yarp::os::Value(false)).asBool();
     m_dumpData = rf.check("dump_data", yarp::os::Value(false)).asBool();
@@ -1250,6 +1251,11 @@ bool WalkingModule::prepareRobot(bool onTheFly)
         return false;
     }
 
+    if (m_useLiftingPose)
+    {
+        m_qDesired = m_robotControlHelper->getJointPosition();
+    }
+    
     std::cerr << "q desired IK " << Eigen::VectorXd(iDynTree::toEigen(m_qDesired) * 180 / M_PI).transpose() << std::endl;
 
     if(!m_robotControlHelper->setPositionReferences(m_qDesired, 5.0))

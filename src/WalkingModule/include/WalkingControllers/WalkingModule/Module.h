@@ -71,6 +71,7 @@ namespace WalkingControllers
         std::string m_robot; /**< Robot name. */
 
         bool m_useMPC; /**< True if the MPC controller is used. */
+        bool m_useLiftingPose; /**< True if the robot is prepared from the last lifting pose.*/
         bool m_useQPIK; /**< True if the QP-IK is used. */
         bool m_useOSQP; /**< True if osqp is used to QP-IK problem. */
         bool m_dumpData; /**< True if data are saved. */
