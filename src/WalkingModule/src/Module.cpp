@@ -222,6 +222,7 @@ bool WalkingModule::configure(yarp::os::ResourceFinder& rf)
         return false;
     }
 
+    
     // initialize the trajectory planner
     m_trajectoryGenerator = std::make_unique<TrajectoryGenerator>();
     yarp::os::Bottle& trajectoryPlannerOptions = rf.findGroup("TRAJECTORY_PLANNER");
@@ -397,6 +398,17 @@ bool WalkingModule::configure(yarp::os::ResourceFinder& rf)
     m_qDesired.resize(m_robotControlHelper->getActuatedDoFs());
     m_dqDesired.resize(m_robotControlHelper->getActuatedDoFs());
 
+
+
+    // open CoM planned trajectory port for navigation integration
+
+    std::string plannedCoMPositionPortName = "/planned_CoM/data:o";
+    if (!m_plannedCoMPositionPort.open(plannedCoMPositionPortName))
+    {
+        yError() << "[WalkingModule::configure] Could not open" << plannedCoMPositionPortName << " port.";
+        return false;
+    }
+
     yInfo() << "[WalkingModule::configure] Ready to play!";
 
     return true;
@@ -427,6 +439,7 @@ bool WalkingModule::close()
     // close the ports
     m_rpcPort.close();
     m_desiredUnyciclePositionPort.close();
+    m_plannedCoMPositionPort.close();
 
     // close the connection with robot
     if(!m_robotControlHelper->close())
@@ -1020,6 +1033,21 @@ bool WalkingModule::updateModule()
             m_loggerPort.write();
 
         }
+
+
+       // streaming CoM desired position and heading for Navigation algorithms 
+        std::vector<double> CoMPositionDesired(3);
+        CoMPositionDesired[0] = m_stableDCMModel->getCoMPosition().data()[0];
+        CoMPositionDesired[1] = m_stableDCMModel->getCoMPosition().data()[1];
+        CoMPositionDesired[2] = m_retargetingClient->comHeight() + m_comHeightOffset;
+        
+        yarp::sig::Vector& planned_traj = m_plannedCoMPositionPort.prepare();
+        planned_traj.clear();
+        planned_traj.push_back(CoMPositionDesired[0]);
+        planned_traj.push_back(CoMPositionDesired[1]);
+        planned_traj.push_back(CoMPositionDesired[2]);
+        planned_traj.push_back(meanYaw);
+        m_plannedCoMPositionPort.write();
 
         // in the approaching phase the robot should not move and the trajectories should not advance
         if(!m_retargetingClient->isApproachingPhase())
