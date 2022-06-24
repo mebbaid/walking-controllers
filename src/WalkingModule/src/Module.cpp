@@ -1046,8 +1046,6 @@ bool WalkingModule::updateModule()
         double yawLeftp, yawRightp, meanYawp;
         yarp::sig::Vector& planned_poses = m_plannedCoMPositionPort.prepare();
         planned_poses.clear();
-        planned_poses.push_back(m_DCMPositionDesired.size());
-
         for (auto i = 0; i < m_DCMPositionDesired.size(); i++)
         {
             m_stableDCMModel->setInput(m_DCMPositionDesired[i]);
