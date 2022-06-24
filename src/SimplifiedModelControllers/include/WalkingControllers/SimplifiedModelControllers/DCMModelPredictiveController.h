@@ -21,6 +21,9 @@
 #include <iDynTree/Core/SparseMatrix.h>
 #include <iDynTree/ConvexHullHelpers.h>
 
+#include <iDynTree/Core/EigenSparseHelpers.h>
+#include <iDynTree/Core/Direction.h>
+
 // yarp
 #include <yarp/os/Value.h>
 
@@ -81,7 +84,8 @@ namespace WalkingControllers
          * A new MPC solver is initialized when a new phase occurs.
          */
         std::shared_ptr<MPCSolver> m_currentController;
-
+        
+        iDynTree::VectorDynSize  m_solution; /**< Vector MPC solution over prediction horizon */
         iDynTree::Vector2 m_output; /**< Vector containing the output of the controller. */
 
         /**
@@ -245,9 +249,16 @@ namespace WalkingControllers
         const iDynTree::Vector2& getControllerOutput() const;
 
         /**
+         * Get the optimal solution over prediction horizon of the controller.
+         * @return the vector containing the solution the controller.
+         */
+        const iDynTree::VectorDynSize& getControllerSolution() const;
+
+        /**
          * Reset the controller
          */
         void reset();
+        
     };
 };
 #endif

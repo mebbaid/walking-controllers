@@ -361,6 +361,7 @@ bool WalkingController::initialize(const yarp::os::Searchable& config)
     // reset the solver
     reset();
 
+
     return true;
 }
 
@@ -512,6 +513,11 @@ bool WalkingController::solve()
     m_output(0) = solution(m_stateSize * (m_controllerHorizon + 1));
     m_output(1) = solution(m_stateSize * (m_controllerHorizon + 1) + 1);
 
+    m_solution = solution; 
+
+    yInfo() << "[WalkingModule::updateModule] MPC solution desired" << m_solution;
+
+
     if(m_convexHullComputer.computeMargin(m_output) < -m_convexHullTolerance)
     {
         yError() << "[solve] The evaluated ZMP is outside the convexHull.";
@@ -524,6 +530,11 @@ bool WalkingController::solve()
 const iDynTree::Vector2& WalkingController::getControllerOutput() const
 {
     return m_output;
+}
+
+const iDynTree::VectorDynSize& WalkingController::getControllerSolution() const
+{
+    return m_solution;
 }
 
 void WalkingController::reset()

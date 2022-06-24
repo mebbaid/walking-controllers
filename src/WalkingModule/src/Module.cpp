@@ -740,7 +740,7 @@ bool WalkingModule::updateModule()
             yError() << "[WalkingModule::updateModule] Unable to propagate the 3D-LIPM.";
             return false;
         }
-
+        
         // DCM controller
         if(m_useMPC)
         {
@@ -771,6 +771,7 @@ bool WalkingModule::updateModule()
                 return false;
             }
 
+    
             m_profiler->setEndTime("MPC");
         }
         else
@@ -798,8 +799,9 @@ bool WalkingModule::updateModule()
         }
         else
         {
-            if(m_useMPC)
+            if(m_useMPC) {
                 desiredZMP = m_walkingController->getControllerOutput();
+            }
             else
                 desiredZMP = m_walkingDCMReactiveController->getControllerOutput();
         }
@@ -1036,19 +1038,32 @@ bool WalkingModule::updateModule()
 
 
        // streaming CoM desired position and heading for Navigation algorithms 
-        std::vector<double> CoMPositionDesired(3);
-        CoMPositionDesired[0] = m_stableDCMModel->getCoMPosition().data()[0];
-        CoMPositionDesired[1] = m_stableDCMModel->getCoMPosition().data()[1];
-        CoMPositionDesired[2] = m_retargetingClient->comHeight() + m_comHeightOffset;
-        
+       // std::vector<double> CoMPositionDesired(3);
+        std::deque<iDynTree::Vector2> CoMPositionDesired;
+        iDynTree::Vector2 Position_tmp;
+        for (auto i = m_DCMPositionDesired.cbegin(); i != m_DCMPositionDesired.cend(); ++i)
+        {
+            m_stableDCMModel->setInput(*(i));
+            m_stableDCMModel->integrateModel();
+            Position_tmp = m_stableDCMModel->getCoMPosition();
+            CoMPositionDesired.push_back(Position_tmp);
+            //m_stableDCMModel->reset();
+        }
+
+        yInfo() << "[WalkingModule::updateModule] the planned CoM trajectry is " << CoMPositionDesired ;
+        //CoMPositionDesired[0] = m_stableDCMModel->getCoMPosition().data()[0];
+        //CoMPositionDesired[1] = m_stableDCMModel->getCoMPosition().data()[1];
+        //CoMPositionDesired[2] = m_retargetingClient->comHeight() + m_comHeightOffset;
+        /*
         yarp::sig::Vector& planned_traj = m_plannedCoMPositionPort.prepare();
         planned_traj.clear();
+        planned_traj.push_back(horizon);
         planned_traj.push_back(CoMPositionDesired[0]);
         planned_traj.push_back(CoMPositionDesired[1]);
         planned_traj.push_back(CoMPositionDesired[2]);
         planned_traj.push_back(meanYaw);
         m_plannedCoMPositionPort.write();
-
+        */
         // in the approaching phase the robot should not move and the trajectories should not advance
         if(!m_retargetingClient->isApproachingPhase())
         {

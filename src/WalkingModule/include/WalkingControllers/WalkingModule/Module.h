@@ -131,6 +131,7 @@ namespace WalkingControllers
         iDynTree::VectorDynSize m_qDesired; /**< Vector containing the results of the IK algorithm [rad]. */
         iDynTree::VectorDynSize m_dqDesired; /**< Vector containing the results of the IK algorithm [rad]. */
 
+
         iDynTree::Rotation m_inertial_R_worldFrame; /**< Rotation between the inertial and the world frame. */
 
         yarp::os::Port m_rpcPort; /**< Remote Procedure Call port. */
