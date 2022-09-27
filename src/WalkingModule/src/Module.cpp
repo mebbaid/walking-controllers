@@ -16,7 +16,6 @@
 #include <yarp/sig/Vector.h>
 #include <yarp/os/LogStream.h>
 
-
 // iDynTree
 #include <iDynTree/Core/VectorFixSize.h>
 #include <iDynTree/Core/EigenHelpers.h>
@@ -24,9 +23,15 @@
 #include <iDynTree/yarp/YARPEigenConversions.h>
 #include <iDynTree/Model/Model.h>
 
+// blf
+#include <BipedalLocomotion/ParametersHandler/IParametersHandler.h>
+#include <BipedalLocomotion/ParametersHandler/YarpImplementation.h>
+
+// walking-controllers
 #include <WalkingControllers/WalkingModule/Module.h>
 #include <WalkingControllers/YarpUtilities/Helper.h>
 #include <WalkingControllers/StdUtilities/Helper.h>
+#include <WalkingControllers/WholeBodyControllers/BLFIK.h>
 
 using namespace WalkingControllers;
 
@@ -133,6 +138,7 @@ bool WalkingModule::configure(yarp::os::ResourceFinder& rf)
     // module name (used as prefix for opened ports)
     m_useMPC = rf.check("use_mpc", yarp::os::Value(false)).asBool();
     m_useQPIK = rf.check("use_QP-IK", yarp::os::Value(false)).asBool();
+    m_useBLFIK = rf.check("use_BLF-IK", yarp::os::Value(false)).asBool();
     m_useOSQP = rf.check("use_osqp", yarp::os::Value(false)).asBool();
     m_dumpData = rf.check("dump_data", yarp::os::Value(false)).asBool();
     m_maxInitialCoMVelocity = rf.check("max_initial_com_vel", yarp::os::Value(1.0)).asFloat64();
@@ -141,6 +147,7 @@ bool WalkingModule::configure(yarp::os::ResourceFinder& rf)
     m_minimumNormalForceZMP = rf.check("minimum_normal_force_ZMP", yarp::os::Value(0.001)).asFloat64();
     m_maxZMP[0] = 1.0;
     m_maxZMP[1] = 1.0;
+    std::string goalSuffix = rf.check("goal_port_suffix", yarp::os::Value("/goal:i")).asString();
 
     yarp::os::Value maxLocalZMP = rf.find("maximum_local_zmp");
     if (maxLocalZMP.isList())
@@ -169,6 +176,13 @@ bool WalkingModule::configure(yarp::os::ResourceFinder& rf)
 
     }
     m_skipDCMController = rf.check("skip_dcm_controller", yarp::os::Value(false)).asBool();
+
+    m_goalScaling.resize(3);
+    if (!YarpUtilities::getVectorFromSearchable(rf, "goal_port_scaling", m_goalScaling))
+    {
+        yError() << "[WalkingModule::configure] Failed while reading goal_port_scaling.";
+        return false;
+    }
 
     yarp::os::Bottle& generalOptions = rf.findGroup("GENERAL");
     m_dT = generalOptions.check("sampling_time", yarp::os::Value(0.016)).asFloat64();
@@ -215,7 +229,7 @@ bool WalkingModule::configure(yarp::os::ResourceFinder& rf)
         return false;
     }
 
-    std::string desiredUnyciclePositionPortName = "/" + getName() + "/goal:i";
+    std::string desiredUnyciclePositionPortName = "/" + getName() + goalSuffix;
     if(!m_desiredUnyciclePositionPort.open(desiredUnyciclePositionPortName))
     {
         yError() << "[WalkingModule::configure] Could not open" << desiredUnyciclePositionPortName << " port.";
@@ -289,26 +303,6 @@ bool WalkingModule::configure(yarp::os::ResourceFinder& rf)
         return false;
     }
 
-    if(m_useQPIK)
-    {
-        yarp::os::Bottle& inverseKinematicsQPSolverOptions = rf.findGroup("INVERSE_KINEMATICS_QP_SOLVER");
-        inverseKinematicsQPSolverOptions.append(generalOptions);
-        if(m_useOSQP)
-            m_QPIKSolver = std::make_unique<WalkingQPIK_osqp>();
-        else
-            m_QPIKSolver = std::make_unique<WalkingQPIK_qpOASES>();
-
-        if(!m_QPIKSolver->initialize(inverseKinematicsQPSolverOptions,
-                                     m_robotControlHelper->getActuatedDoFs(),
-                                     m_robotControlHelper->getVelocityLimits(),
-                                     m_robotControlHelper->getPositionUpperLimits(),
-                                     m_robotControlHelper->getPositionLowerLimits()))
-        {
-            yError() << "[WalkingModule::configure] Failed to configure the QP-IK solver (qpOASES)";
-            return false;
-        }
-    }
-
     // initialize the forward kinematics solver
     m_FKSolver = std::make_unique<WalkingFK>();
     yarp::os::Bottle& forwardKinematicsSolverOptions = rf.findGroup("FORWARD_KINEMATICS_SOLVER");
@@ -317,6 +311,48 @@ bool WalkingModule::configure(yarp::os::ResourceFinder& rf)
     {
         yError() << "[WalkingModule::configure] Failed to configure the fk solver";
         return false;
+    }
+
+
+    if (m_useQPIK)
+    {
+        if (!m_useBLFIK)
+        {
+            yarp::os::Bottle& inverseKinematicsQPSolverOptions = rf.findGroup("INVERSE_KINEMATICS_"
+                                                                              "QP_SOLVER");
+            inverseKinematicsQPSolverOptions.append(generalOptions);
+            if (m_useOSQP)
+                m_QPIKSolver = std::make_unique<WalkingQPIK_osqp>();
+            else
+                m_QPIKSolver = std::make_unique<WalkingQPIK_qpOASES>();
+
+            if (!m_QPIKSolver->initialize(inverseKinematicsQPSolverOptions,
+                                          m_robotControlHelper->getActuatedDoFs(),
+                                          m_robotControlHelper->getVelocityLimits(),
+                                          m_robotControlHelper->getPositionUpperLimits(),
+                                          m_robotControlHelper->getPositionLowerLimits()))
+            {
+                yError() << "[WalkingModule::configure] Failed to configure the QP-IK solver "
+                            "(qpOASES)";
+                return false;
+            }
+        } else
+        {
+            yarp::os::Bottle& inverseKinematicsQPSolverOptions = rf.findGroup("INVERSE_KINEMATICS_BLF_QP_SOLVER");
+            // TODO check if this is required
+            inverseKinematicsQPSolverOptions.append(generalOptions);
+            m_BLFIKSolver= std::make_unique<BLFIK>();
+            auto paramHandler
+                = std::make_shared<BipedalLocomotion::ParametersHandler::YarpImplementation>();
+            paramHandler->set(inverseKinematicsQPSolverOptions);
+            paramHandler->setParameter("use_root_link_for_height", m_useRootLinkForHeight);
+
+            if (!m_BLFIKSolver->initialize(paramHandler, m_FKSolver->getKinDyn()))
+            {
+                yError() << "[WalkingModule::configure] Failed to configure the blf ik solver";
+                return false;
+            }
+        }
     }
 
     // initialize the linear inverted pendulum model
@@ -378,7 +414,7 @@ bool WalkingModule::configure(yarp::os::ResourceFinder& rf)
 
     // time profiler
     m_profiler = std::make_unique<TimeProfiler>();
-    m_profiler->setPeriod(round(0.1 / m_dT));
+    m_profiler->setPeriod(round(10 / m_dT));
     if(m_useMPC)
         m_profiler->addTimer("MPC");
 
@@ -422,7 +458,15 @@ void WalkingModule::reset()
     m_trajectoryGenerator->reset();
 
     if(m_dumpData)
-         m_loggerPort.close();
+        m_loggerPort.close();
+}
+
+void WalkingModule::applyGoalScaling(yarp::sig::Vector &plannerInput)
+{
+    for (size_t i = 0; i < std::min(plannerInput.size(), m_goalScaling.size()); ++i)
+    {
+        plannerInput(i) *= m_goalScaling(i);
+    }
 }
 
 bool WalkingModule::close()
@@ -483,7 +527,7 @@ bool WalkingModule::solveQPIK(const std::unique_ptr<WalkingQPIK>& solver, const 
     solver->setDesiredHandsTransformation(m_FKSolver->getHeadToWorldTransform() * m_retargetingClient->leftHandTransform(),
                                           m_FKSolver->getHeadToWorldTransform() * m_retargetingClient->rightHandTransform());
 
-    ok &= solver->setDesiredRetargetingJoint(m_retargetingClient->jointValues());
+    ok &= solver->setDesiredRetargetingJoint(m_retargetingClient->jointPositions());
 
     // set jacobians
     iDynTree::MatrixDynSize jacobian, comJacobian;
@@ -531,6 +575,42 @@ bool WalkingModule::solveQPIK(const std::unique_ptr<WalkingQPIK>& solver, const 
     output = solver->getDesiredJointVelocities();
 
     return true;
+}
+
+
+bool WalkingModule::solveBLFIK(const iDynTree::Position& desiredCoMPosition,
+                               const iDynTree::Vector3& desiredCoMVelocity,
+                               const iDynTree::Rotation& desiredNeckOrientation,
+                               iDynTree::VectorDynSize &output)
+{
+    const std::string phase = m_isStancePhase.front() ? "stance" : "walking";
+    bool ok = m_BLFIKSolver->setPhase(phase);
+    ok = ok && m_BLFIKSolver->setTorsoSetPoint(desiredNeckOrientation.inverse());
+
+    ok = ok
+         && m_BLFIKSolver->setLeftFootSetPoint(m_leftTrajectory.front(),
+                                               m_leftTwistTrajectory.front());
+    ok = ok
+         && m_BLFIKSolver->setRightFootSetPoint(m_rightTrajectory.front(),
+                                                m_rightTwistTrajectory.front());
+    ok = ok && m_BLFIKSolver->setCoMSetPoint(desiredCoMPosition, desiredCoMVelocity);
+    ok = ok
+         && m_BLFIKSolver->setRetargetingJointSetPoint(m_retargetingClient->jointPositions(),
+                                                       m_retargetingClient->jointVelocities());
+
+    if (m_useRootLinkForHeight)
+    {
+        ok = ok && m_BLFIKSolver->setRootSetPoint(desiredCoMPosition, desiredCoMVelocity);
+    }
+
+    ok = ok && m_BLFIKSolver->solve();
+
+    if (ok)
+    {
+        output = m_BLFIKSolver->getDesiredJointVelocity();
+    }
+
+    return ok;
 }
 
 bool WalkingModule::updateModule()
@@ -651,11 +731,14 @@ bool WalkingModule::updateModule()
         yarp::sig::Vector* desiredUnicyclePosition = nullptr;
         desiredUnicyclePosition = m_desiredUnyciclePositionPort.read(false);
         if(desiredUnicyclePosition != nullptr)
-            if(!setPlannerInput((*desiredUnicyclePosition)(0), (*desiredUnicyclePosition)(1)))
+        {
+            applyGoalScaling(*desiredUnicyclePosition);
+            if(!setPlannerInput(*desiredUnicyclePosition))
             {
                 yError() << "[WalkingModule::updateModule] Unable to set the planner input";
                 return false;
             }
+        }
 
         // if a new trajectory is required check if its the time to evaluate the new trajectory or
         // the time to attach new one
@@ -675,7 +758,7 @@ bool WalkingModule::updateModule()
                 // ask for a new trajectory
                 if(!askNewTrajectories(initTimeTrajectory, !m_isLeftFixedFrame.front(),
                                        measuredTransform, m_newTrajectoryMergeCounter,
-                                       m_desiredPosition))
+                                       m_plannerInput))
                 {
                     yError() << "[WalkingModule::updateModule] Unable to ask for a new trajectory.";
                     return false;
@@ -715,11 +798,15 @@ bool WalkingModule::updateModule()
         // if the retargeting is not in the approaching phase we can set the stance/walking phase
         if(!m_retargetingClient->isApproachingPhase())
         {
-            auto retargetingPhase = m_isStancePhase.front() ? RetargetingClient::Phase::stance : RetargetingClient::Phase::walking;
+            auto retargetingPhase = m_isStancePhase.front() ? RetargetingClient::Phase::Stance : RetargetingClient::Phase::Walking;
             m_retargetingClient->setPhase(retargetingPhase);
         }
 
-        m_retargetingClient->getFeedback();
+        if (!m_retargetingClient->getFeedback())
+        {
+            yError() << "[WalkingModule::updateModule] Unable to get the feedback from the retargeting client.";
+            return false;
+        }
 
         if(!updateFKSolver())
         {
@@ -872,12 +959,29 @@ bool WalkingModule::updateModule()
                 return false;
             }
 
-            if(!solveQPIK(m_QPIKSolver, desiredCoMPosition,
-                          desiredCoMVelocity,
-                          yawRotation, m_dqDesired))
+            if (!m_useBLFIK)
             {
-                yError() << "[WalkingModule::updateModule] Unable to solve the QP problem with osqp.";
-                return false;
+                if (!solveQPIK(m_QPIKSolver,
+                               desiredCoMPosition,
+                               desiredCoMVelocity,
+                               yawRotation,
+                               m_dqDesired))
+                {
+                    yError() << "[WalkingModule::updateModule] Unable to solve the QP problem with "
+                                "osqp.";
+                    return false;
+                }
+            } else
+            {
+                if (!solveBLFIK(desiredCoMPosition,
+                                desiredCoMVelocity,
+                                yawRotation,
+                                m_dqDesired))
+                {
+                    yError() << "[WalkingModule::updateModule] Unable to solve the QP problem with "
+                                "blf ik.";
+                    return false;
+                }
             }
 
             iDynTree::toYarp(m_dqDesired, bufferVelocity);
@@ -923,13 +1027,6 @@ bool WalkingModule::updateModule()
         {
             yError() << "[WalkingModule::updateModule] Error while setting the reference position to iCub.";
             return false;
-        }
-
-        iDynTree::VectorDynSize errorL(6), errorR(6);
-        if(m_useQPIK)
-        {
-            errorR = m_QPIKSolver->getRightFootError();
-            errorL = m_QPIKSolver->getLeftFootError();
         }
 
         // send data to the logger
@@ -1027,8 +1124,9 @@ bool WalkingModule::updateModule()
             // Joint
             data.vectors["joints_state::positions::measured"].assign(m_robotControlHelper->getJointPosition().data(), m_robotControlHelper->getJointPosition().data() + m_robotControlHelper->getJointPosition().size());
             data.vectors["joints_state::positions::desired"].assign(m_qDesired.data(), m_qDesired.data() + m_qDesired.size());
-            data.vectors["joints_state::positions::retargeting"].assign(m_retargetingClient->jointValues().data(), m_retargetingClient->jointValues().data() + m_retargetingClient->jointValues().size());
+            data.vectors["joints_state::positions::retargeting"].assign(m_retargetingClient->jointPositions().data(), m_retargetingClient->jointPositions().data() + m_retargetingClient->jointPositions().size());
             data.vectors["joints_state::velocities::measured"].assign(m_robotControlHelper->getJointVelocity().data(), m_robotControlHelper->getJointVelocity().data() + m_robotControlHelper->getJointVelocity().size());
+            data.vectors["joints_state::velocities::retargeting"].assign(m_retargetingClient->jointVelocities().data(), m_retargetingClient->jointVelocities().data() + m_retargetingClient->jointVelocities().size());
 
             m_loggerPort.write();
 
@@ -1359,7 +1457,7 @@ bool WalkingModule::generateFirstTrajectories()
 
 bool WalkingModule::askNewTrajectories(const double& initTime, const bool& isLeftSwinging,
                                        const iDynTree::Transform& measuredTransform,
-                                       const size_t& mergePoint, const iDynTree::Vector2& desiredPosition)
+                                       const size_t& mergePoint, const iDynTree::VectorDynSize &plannerDesiredInput)
 {
     if(m_trajectoryGenerator == nullptr)
     {
@@ -1391,7 +1489,7 @@ bool WalkingModule::askNewTrajectories(const double& initTime, const bool& isLef
 
     if(!m_trajectoryGenerator->updateTrajectories(initTime, m_DCMPositionDesired[mergePoint],
                                                   m_DCMVelocityDesired[mergePoint], isLeftSwinging,
-                                                  measuredTransform, desiredPosition))
+                                                  measuredTransform, plannerDesiredInput))
     {
         yError() << "[WalkingModule::askNewTrajectories] Unable to update the trajectory.";
         return false;
@@ -1533,15 +1631,24 @@ bool WalkingModule::startWalking()
         return false;
     }
 
+    if (m_useBLFIK)
+    {
+        if (!m_BLFIKSolver->setRegularizationJointSetPoint(m_robotControlHelper->getJointPosition()))
+        {
+            yError() << "[WalkingModule::startWalking] Unable to set regularization joint value.";
+            return false;
+        }
+    }
+
     // before running the controller the retargeting client goes in approaching phase this
     // guarantees a smooth transition
-    m_retargetingClient->setPhase(RetargetingClient::Phase::approacing);
+    m_retargetingClient->setPhase(RetargetingClient::Phase::Approaching);
     m_robotState = WalkingFSM::Walking;
 
     return true;
 }
 
-bool WalkingModule::setPlannerInput(double x, double y)
+bool WalkingModule::setPlannerInput(const yarp::sig::Vector &plannerInput)
 {
     // in the approaching phase the robot should not move
     // as soon as the approaching phase is finished the user
@@ -1586,22 +1693,21 @@ bool WalkingModule::setPlannerInput(double x, double y)
         }
     }
 
-    m_desiredPosition(0) = x;
-    m_desiredPosition(1) = y;
+    m_plannerInput = plannerInput;
 
     m_newTrajectoryRequired = true;
 
     return true;
 }
 
-bool WalkingModule::setGoal(double x, double y)
+bool WalkingModule::setGoal(const yarp::sig::Vector &plannerInput)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
     if(m_robotState != WalkingFSM::Walking)
         return false;
 
-    return setPlannerInput(x, y);
+    return setPlannerInput(plannerInput);
 }
 
 bool WalkingModule::pauseWalking()
