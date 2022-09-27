@@ -1135,33 +1135,35 @@ bool WalkingModule::updateModule()
         }
 
 
-       // streaming CoM desired position and heading for Navigation algorithms 
-       // std::vector<double> CoMPositionDesired(3);
-        std::deque<iDynTree::Vector2> CoMPositionDesired;
-        iDynTree::Vector2 Position_tmp;
-        for (auto i = m_DCMPositionDesired.cbegin(); i != m_DCMPositionDesired.cend(); ++i)
+       // streaming CoM desired position and heading for Navigation algorithms         
+        if(!m_leftTrajectory.size() == m_DCMPositionDesired.size())
         {
-            m_stableDCMModel->setInput(*(i));
-            m_stableDCMModel->integrateModel();
-            Position_tmp = m_stableDCMModel->getCoMPosition();
-            CoMPositionDesired.push_back(Position_tmp);
-            //m_stableDCMModel->reset();
+            yWarning() << "[WalkingModule::updateModule] Inconsistent dimenstions. CoM planned poses will be augmented" ;
         }
 
-        yInfo() << "[WalkingModule::updateModule] the planned CoM trajectry is " << CoMPositionDesired ;
-        //CoMPositionDesired[0] = m_stableDCMModel->getCoMPosition().data()[0];
-        //CoMPositionDesired[1] = m_stableDCMModel->getCoMPosition().data()[1];
-        //CoMPositionDesired[2] = m_retargetingClient->comHeight() + m_comHeightOffset;
-        /*
-        yarp::sig::Vector& planned_traj = m_plannedCoMPositionPort.prepare();
-        planned_traj.clear();
-        planned_traj.push_back(horizon);
-        planned_traj.push_back(CoMPositionDesired[0]);
-        planned_traj.push_back(CoMPositionDesired[1]);
-        planned_traj.push_back(CoMPositionDesired[2]);
-        planned_traj.push_back(meanYaw);
+        double yawLeftp, yawRightp, meanYawp;
+        yarp::sig::Vector& planned_poses = m_plannedCoMPositionPort.prepare();
+        planned_poses.clear();
+        planned_poses.push_back(m_DCMPositionDesired.size());
+
+        for (auto i = 0; i < m_DCMPositionDesired.size(); i++)
+        {
+            m_stableDCMModel->setInput(m_DCMPositionDesired[i]);
+            m_stableDCMModel->integrateModel();
+            yawLeftp =  m_leftTrajectory[i].getRotation().asRPY()(2);
+            yawLeftp =  m_rightTrajectory[i].getRotation().asRPY()(2);
+            meanYawp = std::atan2(std::sin(yawLeftp) + std::sin(yawRightp),
+                                    std::cos(yawLeftp) + std::cos(yawRightp));
+            
+            planned_poses.push_back(m_stableDCMModel->getCoMPosition().data()[0]);
+            planned_poses.push_back(m_stableDCMModel->getCoMPosition().data()[1]);
+            planned_poses.push_back(meanYawp);
+        }
+
         m_plannedCoMPositionPort.write();
-        */
+        m_stableDCMModel->reset(m_DCMPositionDesired.front());
+
+
         // in the approaching phase the robot should not move and the trajectories should not advance
         if(!m_retargetingClient->isApproachingPhase())
         {
