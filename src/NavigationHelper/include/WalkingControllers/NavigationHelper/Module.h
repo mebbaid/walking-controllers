@@ -30,11 +30,12 @@ namespace WalkingControllers
     class WalkingNavigationHelperModule : public yarp::os::RFModule
     {
         double m_dT; /**< RFModule period. */
+        bool m_replan;  /**<  bool corresponding to rpc command to update path  */
         std::ofstream m_stream; /**< std stream. */
 
         yarp::os::BufferedPort<yarp::sig::Vector> m_inputPort; /**< Data port. */
         yarp::os::BufferedPort<yarp::sig::Vector> m_outputPort; /**< Data port. */
-        yarp::os::RpcClient m_rpcClientPort; /**< RPC port. */
+        yarp::os::RpcServer m_rpcServerPort; /**< RPC port. */
      
         // port names
         std::string m_rpcServerPortName;
@@ -67,6 +68,19 @@ namespace WalkingControllers
          * @return true in case of success and false otherwise.
          */
         bool configure(yarp::os::ResourceFinder &rf) override;
+
+        /**
+         * Respond to a message from the RPC port.
+         * @param command is the received message.
+         * The following message has to be a bottle with the following structure:
+         * 1. ("replan"); to provide a new path
+         * 2. ("persist"). to continue with the current path
+         * @param reply is the response of the server.
+         * 1. 1 in case of success;
+         * 2. 0 in case of failure.
+         * @return true in case of success and false otherwise.
+         */
+        bool respond(const yarp::os::Bottle& command, yarp::os::Bottle& reply);
 
         /**
          * Close the RFModule.
