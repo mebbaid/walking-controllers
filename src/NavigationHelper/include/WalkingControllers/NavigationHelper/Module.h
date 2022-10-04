@@ -34,7 +34,7 @@ namespace WalkingControllers
         std::ofstream m_stream; /**< std stream. */
 
         yarp::os::BufferedPort<yarp::sig::Vector> m_inputPort; /**< Data port. */
-        yarp::os::BufferedPort<yarp::sig::Vector> m_outputPort; /**< Data port. */
+        yarp::os::BufferedPort<yarp::os::Bottle> m_outputPort; /**< Data port. */
         yarp::os::RpcServer m_rpcServerPort; /**< RPC port. */
      
         // port names
