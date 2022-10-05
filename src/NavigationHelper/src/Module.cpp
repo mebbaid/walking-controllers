@@ -64,16 +64,17 @@ bool WalkingNavigationHelperModule::configure(yarp::os::ResourceFinder &rf)
         yError() << "[configure] Unable to get a string from searchable";
         return false;
     }
-    m_rpcServerPortName = "/" + name + "/" + portName;
+    m_rpcServerPortName = "/" + name + portName;
     m_rpcServerPort.open(m_rpcClientPortName);
 
     // set data port name
-    if (!YarpUtilities::getStringFromSearchable(rf, "modulePathInputPort_name", input_data_port_name))
+    if (!YarpUtilities::getStringFromSearchable(rf, "modulePathInputPort_name", portName))
     {
         yError() << "[configure] Unable to get a string from searchable";
         return false;
     }
-    m_inputPort.open("/" + getName() + input_data_port_name);
+    input_data_port_name = "/" + getName() +  portName;
+    m_inputPort.open(input_data_port_name);
 
     if (!YarpUtilities::getStringFromSearchable(rf, "data_port_name", nav_path_port_name))
     {
@@ -83,18 +84,20 @@ bool WalkingNavigationHelperModule::configure(yarp::os::ResourceFinder &rf)
     // yarp::os::Network::connect(input_data_port_name, nav_path_port_name);
 
     // set goal port name
-    if (!YarpUtilities::getStringFromSearchable(rf, "robotGoalOutputPort_name", output_port_name))
+    if (!YarpUtilities::getStringFromSearchable(rf, "robotGoalOutputPort_name", portName))
     {
         yError() << "[configure] Unable to get a string from searchable";
         return false;
     }
-    m_outputPort.open("/" + getName() + output_port_name);
+    output_port_name = "/" + getName() + portName;
+    m_outputPort.open(output_port_name);
 
-    if (!YarpUtilities::getStringFromSearchable(rf, "robotGoalInputPort_name", robot_input_port_name))
+    if (!YarpUtilities::getStringFromSearchable(rf, "robotGoalInputPort_name", portName))
     {
         yError() << "[configure] Unable to get a string from searchable";
         return false;
     }
+    robot_input_port_name = portName;
     // yarp::os::Network::connect(output_port_name, robot_input_port_name);
 
     m_replan = true;
