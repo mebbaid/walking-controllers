@@ -35,7 +35,7 @@ namespace WalkingControllers
 
         yarp::os::BufferedPort<yarp::sig::Vector> m_inputPort; /**< Data port. */
         yarp::os::BufferedPort<yarp::os::Bottle> m_outputPort; /**< Data port. */
-        yarp::os::RpcServer m_rpcServerPort; /**< RPC port. */
+        yarp::os::RpcClient m_rpcServerPort; /**< RPC port. */
      
         // port names
         std::string m_rpcServerPortName;
@@ -45,7 +45,8 @@ namespace WalkingControllers
         std::string robot_input_port_name;  // name of port recieving goal data in the walking module side
         std::string input_data_port_name;
 
-        // buffer for path data
+        // buffer and path data
+        yarp::sig::Vector *path{nullptr};
         std::deque<double> m_pathBuffer;  // buffer storing path data coming from navigation
 
     public:

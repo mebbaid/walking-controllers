@@ -65,7 +65,11 @@ bool WalkingNavigationHelperModule::configure(yarp::os::ResourceFinder &rf)
         return false;
     }
     m_rpcServerPortName = "/" + name + portName;
-    m_rpcServerPort.open(m_rpcClientPortName);
+    if (!m_rpcServerPort.open(m_rpcServerPortName))
+    {
+        yError() << "[configure] failed to open the rpc port";
+        return false;
+    }          
 
     // set data port name
     if (!YarpUtilities::getStringFromSearchable(rf, "modulePathInputPort_name", portName))
@@ -108,97 +112,70 @@ bool WalkingNavigationHelperModule::configure(yarp::os::ResourceFinder &rf)
 
 bool WalkingNavigationHelperModule::updateModule()
 {
-    yarp::sig::Vector *path{nullptr};
     // connect the ports
     if (!yarp::os::Network::isConnected(nav_path_port_name, input_data_port_name))
         yarp::os::Network::connect(nav_path_port_name, input_data_port_name);
-    
-    if (m_replan)
-    {
-        // read navigation path from port
-        path = m_inputPort.read();
-        if (path != nullptr)
-        {
-            yInfo() << "[update] got updated path data:" << path->toString().c_str();
-            auto size = path->size();
-            if (!(size % 2 == 0))
-            {
-                yWarning() << "[update] path size is not a multiple of 2, rejecting last element";
-                for (auto i = 0; i < size - 1; i++)
-                {
-                    m_pathBuffer.push_back((*path)[i]);
-                }
-            }
-            else
-            {
-                for (auto i = 0; i < size; i++)
-                {
-                    m_pathBuffer.push_back((*path)[i]);
-                }
-            }
 
-            for (double element : m_pathBuffer)
+    path = m_inputPort.read(false);
+    if (path != nullptr)
+    {
+        yInfo() << "[update] got updated path ";
+        auto size = path->size();
+        if (!(size % 2 == 0))
+        {
+            yWarning() << "[update] path size is not a multiple of 2, rejecting last element";
+            for (auto i = 0; i < size - 1; i++)
             {
-                yInfo() << "[update] the buffer is updated: " << m_pathBuffer;
+                m_pathBuffer.push_back((*path)[i]);
             }
-        
-        if (!yarp::os::Network::isConnected(output_port_name, robot_input_port_name))
-        {
-            yarp::os::Network::connect(output_port_name, robot_input_port_name);
         }
-        yarp::os::Bottle &goal = m_outputPort.prepare();
-        goal.clear();
-        // goal.addString("(");
-        goal.addFloat64(m_pathBuffer.front());
-        m_pathBuffer.pop_front();
-        goal.addFloat64(m_pathBuffer.front());
-        // goal.addString(")");
-        m_outputPort.write();
-        m_pathBuffer.pop_front();
-        }
-        else 
+        else
         {
-            yarp::os::Bottle &goal = m_outputPort.prepare();
-            goal.clear();
-            // goal.addString("(");
-            goal.addFloat64(0.0);
-            goal.addFloat64(0.0);
-            // goal.addString(")");
-            m_outputPort.write();
+            for (auto i = 0; i < size; i++)
+            {
+                m_pathBuffer.push_back((*path)[i]);
+            }
+        }
+        for (double element : m_pathBuffer)
+        {
+            yInfo() << "[update] the buffer is updated: " << m_pathBuffer;
         }
     }
     else
     {
-        if (!m_replan)
-        {
-            if (!yarp::os::Network::isConnected(output_port_name, robot_input_port_name))
-            {
-                yarp::os::Network::connect(output_port_name, robot_input_port_name);
-            }
-            yarp::os::Bottle &goal = m_outputPort.prepare();
-            goal.clear();
-            if (!m_pathBuffer.empty())
-            {
-                // goal.addString("(");
-                goal.addFloat64(m_pathBuffer.front());
-                m_pathBuffer.pop_front();
-                goal.addFloat64(m_pathBuffer.front());
-                // goal.addString(")");
-                m_outputPort.write();
-                m_pathBuffer.pop_front();
-            }
-            else
-            {
-                // goal.addString("(");
-                goal.addFloat64(0.0);
-                goal.addFloat64(0.0);
-                // goal.addString(")");
-                m_outputPort.write();
-            }
-            yInfo() << "[update] path is not updated, persisting with current path";
-        }
+        yWarning() << "[update] not recieving new path, attaching 0  to the end of the buffer";
+    }
+    
+    if (!yarp::os::Network::isConnected(output_port_name, robot_input_port_name))
+    {
+        yarp::os::Network::connect(output_port_name, robot_input_port_name);
     }
 
+    yarp::os::Bottle &goal = m_outputPort.prepare();
+    goal.clear();
+    
+    if (!m_pathBuffer.empty())
+    {    
+
+        goal.addFloat64(m_pathBuffer.front());
+        m_pathBuffer.pop_front();
+        goal.addFloat64(m_pathBuffer.front());
+        m_pathBuffer.pop_front();
+        m_outputPort.write();
+
+    }
+    if (!m_replan)
+    {
+
+        if (!m_pathBuffer.empty())
+        {
+            m_pathBuffer.clear();
+        }
+
+        goal.addFloat64(0.0);
+        goal.addFloat64(0.0);
+        m_outputPort.write();
+    }
     return true;
 }
 
