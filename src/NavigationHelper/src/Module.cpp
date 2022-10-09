@@ -104,7 +104,7 @@ bool WalkingNavigationHelperModule::configure(yarp::os::ResourceFinder &rf)
     robot_input_port_name = portName;
     // yarp::os::Network::connect(output_port_name, robot_input_port_name);
 
-    m_replan = true;
+    m_replan = false;
 
     yInfo() << "[Configure] the Navigation helper module is successfuly configured";
     return true;
@@ -112,6 +112,13 @@ bool WalkingNavigationHelperModule::configure(yarp::os::ResourceFinder &rf)
 
 bool WalkingNavigationHelperModule::updateModule()
 {
+    
+    yarp::os::Bottle  cmd;
+    m_rpcServerPort.read(cmd, true);
+    //yInfo() << "[update] current status of m_replan is: " << m_replan;
+    respond(cmd);
+
+    
     // connect the ports
     if (!yarp::os::Network::isConnected(nav_path_port_name, input_data_port_name))
         yarp::os::Network::connect(nav_path_port_name, input_data_port_name);
@@ -143,7 +150,7 @@ bool WalkingNavigationHelperModule::updateModule()
     }
     else
     {
-        yWarning() << "[update] not recieving new path, attaching 0  to the end of the buffer";
+        //yWarning() << "[update] not recieving new path, attaching 0  to the end of the buffer";
     }
     
     if (!yarp::os::Network::isConnected(output_port_name, robot_input_port_name))
@@ -154,33 +161,30 @@ bool WalkingNavigationHelperModule::updateModule()
     yarp::os::Bottle &goal = m_outputPort.prepare();
     goal.clear();
     
-    if (!m_pathBuffer.empty())
+    if (!m_pathBuffer.empty() && !m_replan)
     {    
 
         goal.addFloat64(m_pathBuffer.front());
         m_pathBuffer.pop_front();
         goal.addFloat64(m_pathBuffer.front());
-        m_pathBuffer.pop_front();
         m_outputPort.write();
+        m_pathBuffer.pop_front();
 
     }
-    if (!m_replan)
+    if (m_replan)
     {
-
         if (!m_pathBuffer.empty())
         {
             m_pathBuffer.clear();
-        }
-
-        goal.addFloat64(0.0);
-        goal.addFloat64(0.0);
-        m_outputPort.write();
+        }        
     }
+
     return true;
 }
 
-bool WalkingNavigationHelperModule::respond(const yarp::os::Bottle &command, yarp::os::Bottle &reply)
+bool WalkingNavigationHelperModule::respond(const yarp::os::Bottle &command)
 {
+    yarp::os::Bottle reply;
     if (command.get(0).asString() == "persist")
     {
 
@@ -188,6 +192,7 @@ bool WalkingNavigationHelperModule::respond(const yarp::os::Bottle &command, yar
 
         reply.addInt32(1);
         yInfo() << "[RPC Server] The path is not updated.";
+        m_rpcServerPort.reply(reply);
         return true;
     }
     else if (command.get(0).asString() == "replan")
@@ -195,14 +200,16 @@ bool WalkingNavigationHelperModule::respond(const yarp::os::Bottle &command, yar
 
         m_replan = true;
         yInfo() << "[RPC Server] The path is updated, replanning.";
-
         reply.addInt32(1);
+        m_rpcServerPort.reply(reply);
         return true;
     }
     else
     {
         yError() << "[RPC Server] Unknown command.";
         reply.addInt32(0);
+        m_rpcServerPort.reply(reply);
+
         return false;
     }
     return true;

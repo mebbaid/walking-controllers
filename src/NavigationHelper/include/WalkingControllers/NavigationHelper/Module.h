@@ -35,7 +35,7 @@ namespace WalkingControllers
 
         yarp::os::BufferedPort<yarp::sig::Vector> m_inputPort; /**< Data port. */
         yarp::os::BufferedPort<yarp::os::Bottle> m_outputPort; /**< Data port. */
-        yarp::os::RpcClient m_rpcServerPort; /**< RPC port. */
+        yarp::os::RpcServer m_rpcServerPort; /**< RPC port. */
      
         // port names
         std::string m_rpcServerPortName;
@@ -81,7 +81,7 @@ namespace WalkingControllers
          * 2. 0 in case of failure.
          * @return true in case of success and false otherwise.
          */
-        bool respond(const yarp::os::Bottle& command, yarp::os::Bottle& reply);
+        bool respond(const yarp::os::Bottle& command);
 
         /**
          * Close the RFModule.
