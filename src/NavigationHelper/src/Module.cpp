@@ -69,7 +69,7 @@ bool WalkingNavigationHelperModule::configure(yarp::os::ResourceFinder &rf)
     {
         yError() << "[configure] failed to open the rpc port";
         return false;
-    }          
+    }
 
     // set data port name
     if (!YarpUtilities::getStringFromSearchable(rf, "modulePathInputPort_name", portName))
@@ -77,7 +77,7 @@ bool WalkingNavigationHelperModule::configure(yarp::os::ResourceFinder &rf)
         yError() << "[configure] Unable to get a string from searchable";
         return false;
     }
-    input_data_port_name = "/" + getName() +  portName;
+    input_data_port_name = "/" + getName() + portName;
     m_inputPort.open(input_data_port_name);
 
     if (!YarpUtilities::getStringFromSearchable(rf, "data_port_name", nav_path_port_name))
@@ -112,13 +112,12 @@ bool WalkingNavigationHelperModule::configure(yarp::os::ResourceFinder &rf)
 
 bool WalkingNavigationHelperModule::updateModule()
 {
-    
-    yarp::os::Bottle  cmd;
+
+    yarp::os::Bottle cmd;
     m_rpcServerPort.read(cmd, true);
-    //yInfo() << "[update] current status of m_replan is: " << m_replan;
+    // yInfo() << "[update] current status of m_replan is: " << m_replan;
     respond(cmd);
 
-    
     // connect the ports
     if (!yarp::os::Network::isConnected(nav_path_port_name, input_data_port_name))
         yarp::os::Network::connect(nav_path_port_name, input_data_port_name);
@@ -150,9 +149,9 @@ bool WalkingNavigationHelperModule::updateModule()
     }
     else
     {
-        //yWarning() << "[update] not recieving new path, attaching 0  to the end of the buffer";
+        // yWarning() << "[update] not recieving new path, attaching 0  to the end of the buffer";
     }
-    
+
     if (!yarp::os::Network::isConnected(output_port_name, robot_input_port_name))
     {
         yarp::os::Network::connect(output_port_name, robot_input_port_name);
@@ -160,23 +159,22 @@ bool WalkingNavigationHelperModule::updateModule()
 
     yarp::os::Bottle &goal = m_outputPort.prepare();
     goal.clear();
-    
+
     if (!m_pathBuffer.empty() && !m_replan)
-    {    
+    {
 
         goal.addFloat64(m_pathBuffer.front());
         m_pathBuffer.pop_front();
         goal.addFloat64(m_pathBuffer.front());
         m_outputPort.write();
         m_pathBuffer.pop_front();
-
     }
     if (m_replan)
     {
         if (!m_pathBuffer.empty())
         {
             m_pathBuffer.clear();
-        }        
+        }
     }
 
     return true;

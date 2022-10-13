@@ -29,28 +29,27 @@ namespace WalkingControllers
      */
     class WalkingNavigationHelperModule : public yarp::os::RFModule
     {
-        double m_dT; /**< RFModule period. */
-        bool m_replan;  /**<  bool corresponding to rpc command to update path  */
+        double m_dT;            /**< RFModule period. */
+        bool m_replan;          /**<  bool corresponding to rpc command to update path  */
         std::ofstream m_stream; /**< std stream. */
 
         yarp::os::BufferedPort<yarp::sig::Vector> m_inputPort; /**< Data port. */
         yarp::os::BufferedPort<yarp::os::Bottle> m_outputPort; /**< Data port. */
-        yarp::os::RpcServer m_rpcServerPort; /**< RPC port. */
-     
+        yarp::os::RpcServer m_rpcServerPort;                   /**< RPC port. */
+
         // port names
         std::string m_rpcServerPortName;
         std::string m_rpcClientPortName;   //
-        std::string nav_path_port_name;   // name of port opened by Navigation client to stream path
-        std::string output_port_name;     // name of port opened by helper to stream goal data to walking-controller
-        std::string robot_input_port_name;  // name of port recieving goal data in the walking module side
+        std::string nav_path_port_name;    // name of port opened by Navigation client to stream path
+        std::string output_port_name;      // name of port opened by helper to stream goal data to walking-controller
+        std::string robot_input_port_name; // name of port recieving goal data in the walking module side
         std::string input_data_port_name;
 
         // buffer and path data
         yarp::sig::Vector *path{nullptr};
-        std::deque<double> m_pathBuffer;  // buffer storing path data coming from navigation
+        std::deque<double> m_pathBuffer; // buffer storing path data coming from navigation
 
     public:
-
         /**
          * Get the period of the RFModule.
          * @return the period of the module.
@@ -76,12 +75,12 @@ namespace WalkingControllers
          * The following message has to be a bottle with the following structure:
          * 1. ("replan"); to provide a new path
          * 2. ("persist"). to continue with the current path
-         * @param reply is the response of the server.
+         * the response of the server is
          * 1. 1 in case of success;
          * 2. 0 in case of failure.
          * @return true in case of success and false otherwise.
          */
-        bool respond(const yarp::os::Bottle& command);
+        bool respond(const yarp::os::Bottle &command);
 
         /**
          * Close the RFModule.
