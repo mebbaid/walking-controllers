@@ -77,6 +77,8 @@ namespace WalkingControllers
         bool m_firstRun; /**< True if it is the first run. */
         bool m_skipDCMController; /**< True if the desired ZMP should be used instead of the DCM controller. */
 
+        bool m_useNavigationHelper;  /**< True if use navigationHelper module */
+
         double m_maxInitialCoMVelocity; /**< Bound on the initial CoM velocity to check if the robot is going to jump at startup. */
 
         iDynTree::Vector2 m_previousZMP; /**< Previous ZMP value to check if the ZMP was constant for a while. */

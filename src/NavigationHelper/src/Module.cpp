@@ -142,10 +142,6 @@ bool WalkingNavigationHelperModule::updateModule()
                 m_pathBuffer.push_back((*path)[i]);
             }
         }
-        for (double element : m_pathBuffer)
-        {
-            yInfo() << "[update] the buffer is updated: " << m_pathBuffer;
-        }
     }
     else
     {
@@ -162,7 +158,8 @@ bool WalkingNavigationHelperModule::updateModule()
 
     if (!m_pathBuffer.empty() && !m_replan)
     {
-
+        
+        
         goal.addFloat64(m_pathBuffer.front());
         m_pathBuffer.pop_front();
         goal.addFloat64(m_pathBuffer.front());

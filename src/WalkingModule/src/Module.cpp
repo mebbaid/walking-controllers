@@ -140,6 +140,7 @@ bool WalkingModule::configure(yarp::os::ResourceFinder& rf)
     m_useQPIK = rf.check("use_QP-IK", yarp::os::Value(false)).asBool();
     m_useBLFIK = rf.check("use_BLF-IK", yarp::os::Value(false)).asBool();
     m_useOSQP = rf.check("use_osqp", yarp::os::Value(false)).asBool();
+    m_useNavigationHelper = rf.check("use_navigation", yarp::os::Value(false)).asBool();
     m_dumpData = rf.check("dump_data", yarp::os::Value(false)).asBool();
     m_maxInitialCoMVelocity = rf.check("max_initial_com_vel", yarp::os::Value(1.0)).asFloat64();
     m_constantZMPTolerance = rf.check("constant_ZMP_tolerance", yarp::os::Value(0.0)).asFloat64();
@@ -1720,11 +1721,29 @@ bool WalkingModule::setPlannerInput(const yarp::sig::Vector &plannerInput)
 bool WalkingModule::setGoal(const yarp::sig::Vector &plannerInput)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
+    iDynTree::Position absoluteGoal;
 
     if(m_robotState != WalkingFSM::Walking)
         return false;
 
-    return setPlannerInput(plannerInput);
+    if (!m_useNavigationHelper)
+    {
+        return setPlannerInput(plannerInput);
+    }
+    else
+    {
+        absoluteGoal(0) = plannerInput(0);
+        absoluteGoal(1) = plannerInput(1);
+        absoluteGoal(2) = 0.0;
+        absoluteGoal    =  m_FKSolver->getRootLinkToWorldTransform().getRotation() * (absoluteGoal - m_FKSolver->getRootLinkToWorldTransform().getPosition());
+        yInfo() << "[setGoal] the value of the transformation between root and world " << m_FKSolver->getRootLinkToWorldTransform().toString() ;
+        yarp::sig::Vector desired;
+        desired.push_back(absoluteGoal(0));
+        desired.push_back(absoluteGoal(1));
+        return setPlannerInput(desired);
+    }    
+
+    
 }
 
 bool WalkingModule::pauseWalking()
