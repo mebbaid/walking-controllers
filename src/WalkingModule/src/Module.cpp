@@ -885,7 +885,8 @@ bool WalkingModule::updateModule()
         }
 
         // set feedback and the desired signal
-        m_walkingZMPController->setFeedback(measuredZMP, m_FKSolver->getCoMPosition());
+
+        m_walkingZMPController->setFeedback(measuredZMP + m_zmpOffset, m_FKSolver->getCoMPosition());
         m_walkingZMPController->setReferenceSignal(desiredZMP, m_stableDCMModel->getCoMPosition(),
                                                    m_stableDCMModel->getCoMVelocity());
 
@@ -1050,7 +1051,8 @@ bool WalkingModule::updateModule()
             data.vectors["dcm::velocity::desired"].assign(m_DCMVelocityDesired.front().data(), m_DCMVelocityDesired.front().data() + m_DCMVelocityDesired.front().size());
 
             // ZMP
-            data.vectors["zmp::measured"].assign(measuredZMP.data(), measuredZMP.data() + measuredZMP.size());
+            measuredZMP += m_zmpOffset;
+            data.vectors["zmp::measured"].assign(measuredZMP.data() , measuredZMP.data() + measuredZMP.size());
             data.vectors["zmp::desired"].assign(desiredZMP.data(), desiredZMP.data() + desiredZMP.size());
             // "zmp_des_planner_x", "zmp_des_planner_y",
             iDynTree::Vector2& desiredZMPPlanner = m_desiredZMP.front();
@@ -1609,6 +1611,15 @@ bool WalkingModule::startWalking()
         return false;
     }
 
+    // Adjusting the offset on the ZMP at the begining with respect to CoM in the lateral direction
+    iDynTree::Vector2 measuredZMP;
+    iDynTree::Vector3 measuredCoM = m_FKSolver->getCoMPosition();
+    if(!evaluateZMP(measuredZMP))
+    {
+        yError() << "[WalkingModule::startWalking] Unable to evaluate the ZMP.";
+        return false;
+    }
+
     if (m_useBLFIK)
     {
         if (!m_BLFIKSolver->setRegularizationJointSetPoint(m_robotControlHelper->getJointPosition()))
@@ -1616,6 +1627,14 @@ bool WalkingModule::startWalking()
             yError() << "[WalkingModule::startWalking] Unable to set regularization joint value.";
             return false;
         }
+    }
+
+
+    m_zmpOffset.zero();
+    if (measuredZMP(1) != measuredCoM(1))
+    {
+        yDebug() << "[WalkingModule::startWalking] resetting the ZMP in the lateral direction to match CoM";
+        m_zmpOffset(1) = measuredCoM(1) - measuredZMP(1);
     }
 
     // before running the controller the retargeting client goes in approaching phase this
