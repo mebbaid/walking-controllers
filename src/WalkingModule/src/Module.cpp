@@ -886,7 +886,7 @@ bool WalkingModule::updateModule()
 
         // set feedback and the desired signal
 
-        m_walkingZMPController->setFeedback(measuredZMP + m_zmpOffset, m_FKSolver->getCoMPosition());
+        m_walkingZMPController->setFeedback(measuredZMP, m_FKSolver->getCoMPosition());
         m_walkingZMPController->setReferenceSignal(desiredZMP, m_stableDCMModel->getCoMPosition(),
                                                    m_stableDCMModel->getCoMVelocity());
 
@@ -1051,7 +1051,7 @@ bool WalkingModule::updateModule()
             data.vectors["dcm::velocity::desired"].assign(m_DCMVelocityDesired.front().data(), m_DCMVelocityDesired.front().data() + m_DCMVelocityDesired.front().size());
 
             // ZMP
-            measuredZMP += m_zmpOffset;
+            // measuredZMP += m_zmpOffset;
             data.vectors["zmp::measured"].assign(measuredZMP.data() , measuredZMP.data() + measuredZMP.size());
             data.vectors["zmp::desired"].assign(desiredZMP.data(), desiredZMP.data() + desiredZMP.size());
             // "zmp_des_planner_x", "zmp_des_planner_y",
@@ -1206,14 +1206,31 @@ bool WalkingModule::evaluateZMP(iDynTree::Vector2& zmp)
         return false;
     }
 
+    // before rotating, add offset
+    //iDynTree::Position measuredCoM = m_FKSolver->getCoMPosition();
+    //m_zmpOffset.zero();
+    //iDynTree::toEigen(zmpLocal) =  ((leftWrench.getLinearVec3()(2) * zmpLeftDefined) / totalZ)
+    //    * iDynTree::toEigen(zmpLeft) +
+    //    ((rightWrench.getLinearVec3()(2) * zmpRightDefined)/totalZ) * iDynTree::toEigen(zmpRight);
+
+    //m_zmpOffset =   measuredCoM - zmpLocal;  
+    //m_zmpOffset(2) = 0.0;
+    // rotate the resulting zmp and offset
+
+    m_zmpOffset = m_FKSolver->getRootLinkToWorldTransform().getRotation() * m_zmpOffsetLocal;
+
     zmpLeft = m_FKSolver->getLeftFootToWorldTransform() * zmpLeft;
     zmpRight = m_FKSolver->getRightFootToWorldTransform() * zmpRight;
+
+
 
     // the global zmp is given by a weighted average
     iDynTree::toEigen(zmpWorld) = ((leftWrench.getLinearVec3()(2) * zmpLeftDefined) / totalZ)
         * iDynTree::toEigen(zmpLeft) +
         ((rightWrench.getLinearVec3()(2) * zmpRightDefined)/totalZ) * iDynTree::toEigen(zmpRight);
 
+    // remove rotated offset
+    iDynTree::toEigen(zmpWorld) += iDynTree::toEigen(m_zmpOffset);
     zmp(0) = zmpWorld(0);
     zmp(1) = zmpWorld(1);
 
@@ -1612,6 +1629,7 @@ bool WalkingModule::startWalking()
     }
 
     // Adjusting the offset on the ZMP at the begining with respect to CoM in the lateral direction
+    
     iDynTree::Vector2 measuredZMP;
     iDynTree::Vector3 measuredCoM = m_FKSolver->getCoMPosition();
     if(!evaluateZMP(measuredZMP))
@@ -1631,11 +1649,10 @@ bool WalkingModule::startWalking()
 
 
     m_zmpOffset.zero();
-    if (measuredZMP(1) != measuredCoM(1))
-    {
-        yDebug() << "[WalkingModule::startWalking] resetting the ZMP in the lateral direction to match CoM";
-        m_zmpOffset(1) = measuredCoM(1) - measuredZMP(1);
-    }
+    m_zmpOffsetLocal.zero();
+    m_zmpOffset(0) = measuredCoM(0) - measuredZMP(0);
+    m_zmpOffset(1) = measuredCoM(1) - measuredZMP(1);
+    m_zmpOffsetLocal = m_FKSolver->getRootLinkToWorldTransform().getRotation().inverse() * m_zmpOffset;
 
     // before running the controller the retargeting client goes in approaching phase this
     // guarantees a smooth transition

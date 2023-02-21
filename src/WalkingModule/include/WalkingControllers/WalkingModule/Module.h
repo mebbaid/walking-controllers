@@ -79,7 +79,8 @@ namespace WalkingControllers
         
 
         double m_maxInitialCoMVelocity; /**< Bound on the initial CoM velocity to check if the robot is going to jump at startup. */
-        iDynTree::Vector2 m_zmpOffset; /** < Offset reading the zmp at the begining*/
+        iDynTree::Position m_zmpOffset; /** < Offset reading the zmp at the begining*/
+        iDynTree::Position m_zmpOffsetLocal; /** < Offset in the local frame*/
 
         iDynTree::Vector2 m_previousZMP; /**< Previous ZMP value to check if the ZMP was constant for a while. */
         int m_constantZMPCounter; /**< Counter to check for how long the ZMP was constant. */
