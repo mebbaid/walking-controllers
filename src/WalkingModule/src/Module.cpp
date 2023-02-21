@@ -1,3 +1,4 @@
+
 /**
  * @file WalkingModule.cpp
  * @authors Giulio Romualdi <giulio.romualdi@iit.it>
@@ -1217,7 +1218,18 @@ bool WalkingModule::evaluateZMP(iDynTree::Vector2& zmp)
     //m_zmpOffset(2) = 0.0;
     // rotate the resulting zmp and offset
 
-    m_zmpOffset = m_FKSolver->getRootLinkToWorldTransform().getRotation() * m_zmpOffsetLocal;
+    double yawLeft = m_leftTrajectory.front().getRotation().asRPY()(2);
+    double yawRight = m_rightTrajectory.front().getRotation().asRPY()(2);
+    
+    // evaluate the mean of the angles
+    double meanYaw = std::atan2(std::sin(yawLeft) + std::sin(yawRight),
+				std::cos(yawLeft) + std::cos(yawRight));
+    iDynTree::Rotation yawRotation;
+    
+    // it is important to notice that the inertial frames rotate with the robot
+    yawRotation = iDynTree::Rotation::RotZ(meanYaw);
+
+    m_zmpOffset = yawRotation * m_zmpOffsetLocal;
 
     zmpLeft = m_FKSolver->getLeftFootToWorldTransform() * zmpLeft;
     zmpRight = m_FKSolver->getRightFootToWorldTransform() * zmpRight;
@@ -1652,7 +1664,7 @@ bool WalkingModule::startWalking()
     m_zmpOffsetLocal.zero();
     m_zmpOffset(0) = measuredCoM(0) - measuredZMP(0);
     m_zmpOffset(1) = measuredCoM(1) - measuredZMP(1);
-    m_zmpOffsetLocal = m_FKSolver->getRootLinkToWorldTransform().getRotation().inverse() * m_zmpOffset;
+    m_zmpOffsetLocal = m_zmpOffset;
 
     // before running the controller the retargeting client goes in approaching phase this
     // guarantees a smooth transition
