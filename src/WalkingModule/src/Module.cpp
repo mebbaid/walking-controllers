@@ -181,6 +181,7 @@ bool WalkingModule::configure(yarp::os::ResourceFinder& rf)
 
     }
     m_skipDCMController = rf.check("skip_dcm_controller", yarp::os::Value(false)).asBool();
+    m_removeZMPOffset   = rf.check("remove_zmp_offset", yarp::os::Value(false)).asBool();
 
     m_goalScaling.resize(3);
     if (!YarpUtilities::getVectorFromSearchable(rf, "goal_port_scaling", m_goalScaling))
@@ -1207,15 +1208,6 @@ bool WalkingModule::evaluateZMP(iDynTree::Vector2& zmp)
         return false;
     }
 
-    // before rotating, add offset
-    //iDynTree::Position measuredCoM = m_FKSolver->getCoMPosition();
-    //m_zmpOffset.zero();
-    //iDynTree::toEigen(zmpLocal) =  ((leftWrench.getLinearVec3()(2) * zmpLeftDefined) / totalZ)
-    //    * iDynTree::toEigen(zmpLeft) +
-    //    ((rightWrench.getLinearVec3()(2) * zmpRightDefined)/totalZ) * iDynTree::toEigen(zmpRight);
-
-    //m_zmpOffset =   measuredCoM - zmpLocal;  
-    //m_zmpOffset(2) = 0.0;
     // rotate the resulting zmp and offset
 
     double yawLeft = m_leftTrajectory.front().getRotation().asRPY()(2);
@@ -1242,9 +1234,16 @@ bool WalkingModule::evaluateZMP(iDynTree::Vector2& zmp)
         ((rightWrench.getLinearVec3()(2) * zmpRightDefined)/totalZ) * iDynTree::toEigen(zmpRight);
 
     // remove rotated offset
-    iDynTree::toEigen(zmpWorld) += iDynTree::toEigen(m_zmpOffset);
+    if (m_removeZMPOffset)
+    {
+        iDynTree::toEigen(zmpWorld) += iDynTree::toEigen(m_zmpOffset);
+        zmp(0) = zmpWorld(0);
+        zmp(1) = zmpWorld(1);
+    }
+    else{
     zmp(0) = zmpWorld(0);
     zmp(1) = zmpWorld(1);
+    }
 
     if (((zmpLeftDefined + zmpRightDefined) > 1.0) && (m_constantZMPMaxCounter > 0))//i.e. we are in double support
     {
