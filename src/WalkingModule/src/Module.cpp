@@ -1048,6 +1048,15 @@ bool WalkingModule::updateModule()
             return false;
         }
 
+        //Send footsteps info on port (x, y, yaw) wrt root_link
+        if (m_navHelperUsed)
+        {
+            if(!m_navHelper.publishPlannedFootsteps(m_trajectoryGenerator))
+            {
+                yWarning() << "[WalkingModule::updateModule] Unable to publish footsteps";
+            }
+        }
+
         // send data to the logger
         if(m_dumpData)
         {
