@@ -75,6 +75,8 @@ namespace WalkingControllers
         FreeSpaceEllipse m_freeSpaceEllipse; /**< The free space ellipse object. */
         bool m_newFreeSpaceEllipse; /**< Check if the free space ellipse has been updated. */
 
+        std::vector<UnicycleState> m_3Dpath; /**< Path of 3D poses (x, y, theta) in the odom reference frame */
+
         std::mutex m_mutex; /**< Mutex. */
 
         /**
