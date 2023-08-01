@@ -165,6 +165,8 @@ namespace WalkingControllers
 
         yarp::os::BufferedPort<BipedalLocomotion::YarpUtilities::VectorsCollection> m_loggerPort; /**< Logger port. */
 
+        std::chrono::high_resolution_clock::time_point m_startTime;
+
         /**
          * Get the robot model from the resource finder and set it.
          * @param rf is the reference to a resource finder object.

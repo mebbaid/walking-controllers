@@ -11,6 +11,8 @@
 #include <iostream>
 #include <memory>
 #include <algorithm>
+#include <chrono>
+#include <ctime>
 
 // YARP
 #include <yarp/eigen/Eigen.h>
@@ -755,6 +757,7 @@ bool WalkingModule::updateModule()
         desiredUnicyclePosition = m_desiredUnyciclePositionPort.read(false);
         if(desiredUnicyclePosition != nullptr)
         {
+            m_startTime = std::chrono::high_resolution_clock::now();
             applyGoalScaling(*desiredUnicyclePosition);
             if(!setPlannerInput(*desiredUnicyclePosition))
             {
@@ -795,6 +798,8 @@ bool WalkingModule::updateModule()
                     yError() << "[WalkingModule::updateModule] Error while updating trajectories. They were not computed yet.";
                     return false;
                 }
+                auto duration = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - m_startTime);
+                yInfo("Time passed since input received and trajectory merged: %f", duration.count());
                 m_newTrajectoryRequired = false;
                 resetTrajectory = true;
             }
@@ -1756,7 +1761,7 @@ bool WalkingModule::setPlannerInput(const yarp::sig::Vector &plannerInput)
 bool WalkingModule::setGoal(const yarp::sig::Vector &plannerInput)
 {
     std::lock_guard<std::mutex> guard(m_mutex);
-
+    m_startTime = std::chrono::high_resolution_clock::now();
     if(m_robotState != WalkingFSM::Walking)
         return false;
 
