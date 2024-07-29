@@ -129,6 +129,8 @@ namespace WalkingControllers
         yarp::os::Port m_rpcPort; /**< Remote Procedure Call port. */
         yarp::os::BufferedPort<yarp::sig::Vector> m_desiredUnyciclePositionPort; /**< Desired robot position port. */
 
+        yarp::os::BufferedPort<yarp::os::Bottle> m_unicyclePositionPort; /**< Unicycle position port. */
+
         bool m_newTrajectoryRequired; /**< if true a new trajectory will be merged soon. (after m_newTrajectoryMergeCounter - 2 cycles). */
         size_t m_newTrajectoryMergeCounter; /**< The new trajectory will be merged after m_newTrajectoryMergeCounter - 2 cycles. */
 

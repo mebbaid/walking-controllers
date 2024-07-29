@@ -226,6 +226,12 @@ bool WalkingModule::configure(yarp::os::ResourceFinder &rf)
         return false;
     }
 
+    if (!m_unicyclePositionPort.open("/unicycle_position:o"))
+    {
+        yError() << "[WalkingModule::configure] Could not open /unicycle_position:o port.";
+        return false;
+    }
+
     // initialize the trajectory planner
     m_trajectoryGenerator = std::make_unique<TrajectoryGenerator>();
     yarp::os::Bottle &trajectoryPlannerOptions = rf.findGroup("TRAJECTORY_PLANNER");
@@ -480,6 +486,7 @@ bool WalkingModule::close()
     // close the ports
     m_rpcPort.close();
     m_desiredUnyciclePositionPort.close();
+    m_unicyclePositionPort.close();
 
     // close the connection with robot
     if (!m_robotControlHelper->close())
@@ -969,6 +976,21 @@ bool WalkingModule::updateModule()
             yError() << "[WalkingModule::updateModule] Error while setting the reference position to iCub.";
             return false;
         }
+
+        // publish current CoM position and velocity
+
+        yarp::os::Bottle comData;
+        comData.clear();
+        comData.addFloat64(m_FKSolver->getCoMPosition()(0));
+        comData.addFloat64(m_FKSolver->getCoMPosition()(1));
+        auto thetaUnicycle = yawRotation.asRPY()(2);
+        comData.addFloat64(thetaUnicycle);
+        comData.addFloat64(m_FKSolver->getCoMVelocity()(0));
+        comData.addFloat64(m_FKSolver->getCoMVelocity()(1));
+        comData.addFloat64(desiredUnicyclePosition->data()[2]);
+        m_unicyclePositionPort.prepare() = comData;
+        m_unicyclePositionPort.write();
+
 
         // send data to the logger
         if (m_dumpData)
