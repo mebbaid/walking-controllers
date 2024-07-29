@@ -12,6 +12,7 @@
 
 // iDynTree
 #include <iDynTree/Core/EigenHelpers.h>
+#include <iDynTree/yarp/YARPConfigurationsLoader.h>
 
 #include <WalkingControllers/TrajectoryPlanner/TrajectoryGenerator.h>
 #include <WalkingControllers/YarpUtilities/Helper.h>
@@ -129,6 +130,7 @@ bool TrajectoryGenerator::configurePlanner(const yarp::os::Searchable& config)
     double switchOverSwingRatio = config.check("switchOverSwingRatio",
                                                yarp::os::Value(0.4)).asFloat64();
     double lastStepDCMOffset = config.check("lastStepDCMOffset", yarp::os::Value(0.0)).asFloat64();
+    double lastStepDCMStillPercentage = config.check("lastStepDCMStillPercentage", yarp::os::Value(0.1)).asFloat64();
     m_leftYawDeltaInRad = iDynTree::deg2rad(config.check("leftYawDeltaInDeg", yarp::os::Value(0.0)).asFloat64());
     m_rightYawDeltaInRad = iDynTree::deg2rad(config.check("rightYawDeltaInDeg", yarp::os::Value(0.0)).asFloat64());
 
@@ -208,6 +210,7 @@ bool TrajectoryGenerator::configurePlanner(const yarp::os::Searchable& config)
     m_dcmGenerator->setOmega(sqrt(9.81/comHeight));
     m_dcmGenerator->setFirstDCMTrajectoryMode(FirstDCMTrajectoryMode::FifthOrderPoly);
     ok = ok && m_dcmGenerator->setLastStepDCMOffsetPercentage(lastStepDCMOffset);
+    ok = ok && m_dcmGenerator->setStillnessPercentage(lastStepDCMStillPercentage);
 
     m_correctLeft = true;
 
@@ -224,6 +227,13 @@ bool TrajectoryGenerator::configurePlanner(const yarp::os::Searchable& config)
         // start the thread
         m_generatorThread = std::thread(&TrajectoryGenerator::computeThread, this);
     }
+
+    if(!iDynTree::parseRotationMatrix(config, "additional_chest_rotation", m_chestAdditionalRotation))
+    {
+        yError() << "[initialize] Unable to set the additional chest rotation.";
+        return false;
+    }
+
 
     return ok;
 }
@@ -852,4 +862,9 @@ bool TrajectoryGenerator::getDesiredZMPPosition(std::vector<iDynTree::Vector2> &
 
     desiredZMP = m_dcmGenerator->getZMPPosition();
     return true;
+}
+
+const iDynTree::Rotation& TrajectoryGenerator::getChestAdditionalRotation() const
+{
+    return m_chestAdditionalRotation;
 }
