@@ -15,6 +15,7 @@
 #include <yarp/dev/IPositionControl.h>
 #include <yarp/dev/IPositionDirect.h>
 #include <yarp/dev/IVelocityControl.h>
+#include <yarp/dev/ITorqueControl.h>
 #include <yarp/dev/IInteractionMode.h>
 #include <yarp/sig/Vector.h>
 #include <yarp/os/Timer.h>
@@ -44,6 +45,7 @@ namespace WalkingControllers
         yarp::dev::IEncodersTimed *m_encodersInterface{nullptr}; /**< Encorders interface. */
         yarp::dev::IPositionDirect *m_positionDirectInterface{nullptr}; /**< Direct position control interface. */
         yarp::dev::IPositionControl *m_positionInterface{nullptr}; /**< Position control interface. */
+        yarp::dev::ITorqueControl *m_torqueInterface{nullptr}; /**< Torque control interface. */
         yarp::dev::IVelocityControl *m_velocityInterface{nullptr}; /**< Position control interface. */
         yarp::dev::IControlMode *m_controlModeInterface{nullptr}; /**< Control mode interface. */
         yarp::dev::IControlLimits *m_limitsInterface{nullptr}; /**< Encorders interface. */
@@ -57,6 +59,7 @@ namespace WalkingControllers
 
         yarp::sig::Vector m_positionFeedbackDeg; /**< Current joint position [deg]. */
         yarp::sig::Vector m_velocityFeedbackDeg; /**< Current joint velocity [deg/s]. */
+        yarp::sig::Vector m_torqueFeedbackNm; /**< Current joint torque [Nm]. */
         iDynTree::VectorDynSize m_positionFeedbackRad; /**< Current joint position [rad]. */
         iDynTree::VectorDynSize m_velocityFeedbackRad; /**< Current joint velocity [rad/s]. */
 
@@ -70,6 +73,7 @@ namespace WalkingControllers
         yarp::sig::Vector m_velocityFeedbackDegFiltered; /**< Vector containing the filtered joint velocity [deg/s]. */
         std::unique_ptr<iCub::ctrl::FirstOrderLowPassFilter> m_positionFilter; /**< Joint position low pass filter .*/
         std::unique_ptr<iCub::ctrl::FirstOrderLowPassFilter> m_velocityFilter; /**< Joint velocity low pass filter .*/
+        std::unique_ptr<iCub::ctrl::FirstOrderLowPassFilter> m_torqueFilter; /**< Joint torque low pass filter .*/
         bool m_useVelocityFilter; /**< True if the joint velocity filter is used. */
 
         struct MeasuredWrench
@@ -205,6 +209,11 @@ namespace WalkingControllers
          */
         const iDynTree::VectorDynSize& getJointVelocity() const;
 
+        /**
+         * Get the joint torques
+         * @return the joint torques in Newton meters
+         */
+        const yarp::sig::Vector& getJointTorque() const;
         /**
          * Get the joint upper limit
          * @return the joint upper bound in radiants

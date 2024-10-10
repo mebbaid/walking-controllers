@@ -408,6 +408,7 @@ bool WalkingModule::configure(yarp::os::ResourceFinder &rf)
         m_vectorsCollectionServer.populateMetadata("joints_state::positions::retargeting_raw", m_robotControlHelper->getAxesList());
         m_vectorsCollectionServer.populateMetadata("joints_state::velocities::measured", m_robotControlHelper->getAxesList());
         m_vectorsCollectionServer.populateMetadata("joints_state::velocities::retargeting", m_robotControlHelper->getAxesList());
+        m_vectorsCollectionServer.populateMetadata("joints_state::torques::measured::simulation", m_robotControlHelper->getAxesList());
 
         // root link information
         m_vectorsCollectionServer.populateMetadata("root_link::position::measured", {"x", "y", "z"});
@@ -1064,6 +1065,7 @@ bool WalkingModule::updateModule()
             m_vectorsCollectionServer.populateData("joints_state::positions::retargeting_raw", m_retargetingClient->rawJointPositions());
             m_vectorsCollectionServer.populateData("joints_state::velocities::measured", m_robotControlHelper->getJointVelocity());
             m_vectorsCollectionServer.populateData("joints_state::velocities::retargeting", m_retargetingClient->jointVelocities());
+            m_vectorsCollectionServer.populateData("joints_state::torques::measured::simulation", m_robotControlHelper->getJointTorque());
 
             // root link information
             m_vectorsCollectionServer.populateData("root_link::position::measured", m_FKSolver->getRootLinkToWorldTransform().getPosition());
