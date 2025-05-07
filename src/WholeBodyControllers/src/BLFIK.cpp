@@ -1,9 +1,5 @@
-/**
- * @file BLFIK.h
- * @authors Giulio Romualdi
- * @copyright 2022 Istituto Italiano di Tecnologia (IIT). This software may be modified and
- * distributed under the terms of the LGPLv2.1 or later, see LGPL.TXT
- */
+// SPDX-FileCopyrightText: Fondazione Istituto Italiano di Tecnologia (IIT)
+// SPDX-License-Identifier: BSD-3-Clause
 
 #include <BipedalLocomotion/Conversions/ManifConversions.h>
 #include <BipedalLocomotion/IK/JointTrackingTask.h>
@@ -14,10 +10,10 @@
 
 #include <WalkingControllers/WholeBodyControllers/BLFIK.h>
 
-#include <iDynTree/Core/EigenHelpers.h>
-#include <iDynTree/Core/Position.h>
-#include <iDynTree/Core/Twist.h>
-#include <iDynTree/Core/VectorFixSize.h>
+#include <iDynTree/EigenHelpers.h>
+#include <iDynTree/Position.h>
+#include <iDynTree/Twist.h>
+#include <iDynTree/VectorFixSize.h>
 #include <iDynTree/KinDynComputations.h>
 
 #include <manif/manif.h>

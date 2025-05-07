@@ -1,10 +1,5 @@
-/**
- * @file TrajectoryGenerator.h
- * @authors Giulio Romualdi <giulio.romualdi@iit.it>
- * @copyright 2018 iCub Facility - Istituto Italiano di Tecnologia
- *            Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
- * @date 2018
- */
+// SPDX-FileCopyrightText: Fondazione Istituto Italiano di Tecnologia (IIT)
+// SPDX-License-Identifier: BSD-3-Clause
 
 
 #ifndef WALKING_CONTROLLERS_TRAJECTORY_PLANNER_TRAJECTORY_GENERATOR_H
@@ -19,7 +14,7 @@
 #include <yarp/os/Searchable.h>
 
 // iDynTree
-#include <iDynTree/Core/VectorFixSize.h>
+#include <iDynTree/VectorFixSize.h>
 
 #include <UnicycleGenerator.h>
 #include <FreeSpaceEllipse.h>
@@ -78,6 +73,8 @@ namespace WalkingControllers
         std::mutex m_mutex; /**< Mutex. */
 
         iDynTree::Rotation m_chestAdditionalRotation; /**< Additional rotation to be applied to the chest. */
+
+        iDynTree::Transform m_unicyclePose; /**< Pose of the unicycle used to interpret the joystick input. */
 
         /**
          * Main thread method.
@@ -272,6 +269,13 @@ namespace WalkingControllers
          * @return the chest additional rotation
          */
         const iDynTree::Rotation& getChestAdditionalRotation() const;
+
+        /**
+         * Get the unicycle pose
+         * Note that this pose is updated only when the planner is called.
+         * @return the unicycle pose
+         */
+        const iDynTree::Transform& getUnicyclePose() const;
     };
 };
 

@@ -1,10 +1,5 @@
-/**
- * @file Helper.h
- * @authors Giulio Romualdi <giulio.romualdi@iit.it>
- * @copyright 2019 iCub Facility - Istituto Italiano di Tecnologia
- *            Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
- * @date 2019
- */
+// SPDX-FileCopyrightText: Fondazione Istituto Italiano di Tecnologia (IIT)
+// SPDX-License-Identifier: BSD-3-Clause
 
 #ifndef WALKING_CONTROLLERS_ROBOT_HELPER_HELPER_H
 #define WALKING_CONTROLLERS_ROBOT_HELPER_HELPER_H
@@ -26,10 +21,10 @@
 
 #include <iCub/ctrl/filters.h>
 
-#include <iDynTree/Core/VectorDynSize.h>
-#include <iDynTree/Core/Wrench.h>
-#include <iDynTree/Core/Twist.h>
-#include <iDynTree/Core/Transform.h>
+#include <iDynTree/VectorDynSize.h>
+#include <iDynTree/Wrench.h>
+#include <iDynTree/Twist.h>
+#include <iDynTree/Transform.h>
 
 #include <WalkingControllers/RobotInterface/PIDHandler.h>
 namespace WalkingControllers
@@ -43,7 +38,7 @@ namespace WalkingControllers
         std::vector<yarp::dev::InteractionModeEnum> m_currentJointInteractionMode;/**< Joint is in the stiff or compliance mode based on the walking architecture phases */
 
         std::vector<bool> m_isGoodTrackingRequired; /**< Vector containing the the information related to the importance of the joint. */
-        unsigned int m_actuatedDOFs; /**< Number of the actuated DoFs. */
+        size_t m_actuatedDOFs; /**< Number of the actuated DoFs. */
 
         // YARP Interfaces exposed by the remotecontrolboardremapper
         yarp::dev::IEncodersTimed *m_encodersInterface{nullptr}; /**< Encorders interface. */
@@ -112,7 +107,7 @@ namespace WalkingControllers
          * @return true in case of success and false otherwise.
          */
         bool getWorstError(const iDynTree::VectorDynSize& desiredJointPositionsRad,
-                           std::pair<int, double>& worstError);
+                           std::pair<size_t, double>& worstError);
 
         /**
          * Switch the control mode.
@@ -156,9 +151,9 @@ namespace WalkingControllers
          * Get all the feedback signal from the interfaces
          * @return true in case of success and false otherwise.
          */
-        bool getFeedbacks(unsigned int maxAttempts, double attemptDelay);
+        bool getFeedbacks(size_t maxAttempts, double attemptDelay);
 
-        bool getFeedbacksRaw(unsigned int maxAttempts, double attemptDelay);
+        bool getFeedbacksRaw(size_t maxAttempts, double attemptDelay);
 
         /**
          * Set the desired position reference. (The position will be sent using PositionControl mode)
@@ -190,7 +185,7 @@ namespace WalkingControllers
          * Reset filters.
          * @return true in case of success and false otherwise.
          */
-        bool resetFilters(unsigned int maxAttempts, double attemptDelay);
+        bool resetFilters(size_t maxAttempts, double attemptDelay);
 
         /**
          * Close the polydrives.
@@ -233,7 +228,7 @@ namespace WalkingControllers
 
         const std::vector<std::string>& getAxesList() const;
 
-        int getActuatedDoFs();
+        size_t getActuatedDoFs();
 
         WalkingPIDHandler& getPIDHandler();
 

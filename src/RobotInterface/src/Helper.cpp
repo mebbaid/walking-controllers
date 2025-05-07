@@ -1,7 +1,10 @@
-#include <iDynTree/Core/Utils.h>
-#include <iDynTree/Core/EigenHelpers.h>
+// SPDX-FileCopyrightText: Fondazione Istituto Italiano di Tecnologia (IIT)
+// SPDX-License-Identifier: BSD-3-Clause
+
+#include <iDynTree/Utils.h>
+#include <iDynTree/EigenHelpers.h>
 #include <yarp/eigen/Eigen.h>
-#include <iDynTree/yarp/YARPConversions.h>
+#include <iDynTree/YARPConversions.h>
 
 #include <WalkingControllers/RobotInterface/Helper.h>
 #include <WalkingControllers/iDynTreeUtilities/Helper.h>
@@ -10,7 +13,7 @@
 using namespace WalkingControllers;
 
 bool RobotInterface::getWorstError(const iDynTree::VectorDynSize& desiredJointPositionsRad,
-                                   std::pair<int, double>& worstError)
+                                   std::pair<size_t, double>& worstError)
 {
     if(!m_encodersInterface)
     {
@@ -29,7 +32,7 @@ bool RobotInterface::getWorstError(const iDynTree::VectorDynSize& desiredJointPo
     worstError.second = 0.0;
     double currentJointPositionRad;
     double absoluteJointErrorRad;
-    for(int i = 0; i < m_actuatedDOFs; i++)
+    for(size_t i = 0; i < m_actuatedDOFs; i++)
     {
         if (m_currentJointInteractionMode[i] == yarp::dev::InteractionModeEnum::VOCAB_IM_STIFF
             && m_isGoodTrackingRequired[i])
@@ -47,7 +50,7 @@ bool RobotInterface::getWorstError(const iDynTree::VectorDynSize& desiredJointPo
     return true;
 }
 
-bool RobotInterface::getFeedbacksRaw(unsigned int maxAttempts, double attemptDelay)
+bool RobotInterface::getFeedbacksRaw(size_t maxAttempts, double attemptDelay)
 {
     if(!m_encodersInterface)
     {
@@ -665,7 +668,7 @@ bool RobotInterface::configurePIDHandler(const yarp::os::Bottle& config)
 }
 
 
-bool RobotInterface::resetFilters(unsigned int maxAttempts, double attemptDelay)
+bool RobotInterface::resetFilters(size_t maxAttempts, double attemptDelay)
 {
     if(!getFeedbacksRaw(maxAttempts, attemptDelay))
     {
@@ -710,7 +713,7 @@ bool RobotInterface::resetFilters(unsigned int maxAttempts, double attemptDelay)
     return true;
 }
 
-bool RobotInterface::getFeedbacks(unsigned int maxAttempts, double attemptDelay)
+bool RobotInterface::getFeedbacks(size_t maxAttempts, double attemptDelay)
 {
     if(!getFeedbacksRaw(maxAttempts, attemptDelay))
     {
@@ -836,9 +839,9 @@ bool RobotInterface::switchToControlMode(const int& controlMode)
     {
         yError() << "[RobotInterface::switchToControlMode] Error while setting the controlMode. Trying joint by joint";
 
-        for (int i = 0; i < m_actuatedDOFs; i++)
+        for (size_t i = 0; i < m_actuatedDOFs; i++)
         {
-            if (!m_controlModeInterface->setControlMode(i, controlMode) && m_isGoodTrackingRequired[i])
+            if (!m_controlModeInterface->setControlMode(static_cast<int>(i), controlMode) && m_isGoodTrackingRequired[i])
             {
                 yError() << "[RobotInterface::switchToControlMode] Error while setting the controlMode of" << m_axesList[i] << "and it requires good tracking.";
                 return false;
@@ -898,7 +901,7 @@ bool RobotInterface::setPositionReferences(const iDynTree::VectorDynSize& desire
 
     m_desiredJointPositionRad = desiredJointPositionsRad;
 
-    std::pair<int, double> worstError(0, 0.0);
+    std::pair<size_t, double> worstError(0, 0.0);
 
     if(!getWorstError(desiredJointPositionsRad, worstError))
     {
@@ -928,7 +931,7 @@ bool RobotInterface::setPositionReferences(const iDynTree::VectorDynSize& desire
 
     double currentJointPositionRad;
     double absoluteJointErrorRad;
-    for (int i = 0; i < m_actuatedDOFs; i++)
+    for (size_t i = 0; i < m_actuatedDOFs; i++)
     {
         currentJointPositionRad = iDynTree::deg2rad(m_positionFeedbackDeg[i]);
         absoluteJointErrorRad = std::fabs(iDynTreeUtilities::shortestAngularDistance(currentJointPositionRad,
@@ -968,7 +971,7 @@ bool RobotInterface::checkMotionDone(bool& motionDone)
     bool checkMotionDone = false;
     m_positionInterface->checkMotionDone(&checkMotionDone);
 
-    std::pair<int, double> worstError;
+    std::pair<size_t, double> worstError;
     if (!getWorstError(m_desiredJointPositionRad, worstError))
     {
         yError() << "[RobotInterface::checkMotionDone] Unable to get the worst error.";
@@ -1020,7 +1023,7 @@ bool RobotInterface::setDirectPositionReferences(const iDynTree::VectorDynSize& 
         return false;
     }
 
-    std::pair<int, double> worstError(0, 0.0);
+    std::pair<size_t, double> worstError(0, 0.0);
 
     if(!getWorstError(desiredPositionRad, worstError))
     {
@@ -1151,7 +1154,7 @@ const std::vector<std::string>& RobotInterface::getAxesList() const
     return m_axesList;
 }
 
-int RobotInterface::getActuatedDoFs()
+size_t RobotInterface::getActuatedDoFs()
 {
     return m_actuatedDOFs;
 }

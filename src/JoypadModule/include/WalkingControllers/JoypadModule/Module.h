@@ -1,10 +1,5 @@
-/**
- * @file JoypadModule.hpp
- * @authors Giulio Romualdi <giulio.romualdi@iit.it>
- * @copyright 2018 iCub Facility - Istituto Italiano di Tecnologia
- *            Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
- * @date 2018
- */
+// SPDX-FileCopyrightText: Fondazione Istituto Italiano di Tecnologia (IIT)
+// SPDX-License-Identifier: BSD-3-Clause
 
 #ifndef WALKING_JOYPAD_MODULE_HPP
 #define WALKING_JOYPAD_MODULE_HPP
@@ -56,12 +51,16 @@ namespace WalkingControllers
         std::string m_robotGoalOutputPortName; /**< Name of the robotGoal port (opened by the joypad module) */
         std::string m_robotGoalInputPortName; /**< Name of the robotGoal port (opened by the walking module) */
 
+        std::string m_joypadType; /**< Type of the joypad. pedals, gamepad, etc. */
+
         /**
          * Standard deadzone function.
          * @param input input of the deadzone
          * @return 0 if the abs(input) < abs(deadzone) otherwise return the input scaled.
          */
         double deadzone(const double &input);
+
+        void sendGoal(const double linearVelocity, const double lateralVelocity, const double angularVelocity);
 
     public:
 

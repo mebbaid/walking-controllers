@@ -1,10 +1,5 @@
-/**
- * @file StableDCMModel.cpp
- * @authors Giulio Romualdi <giulio.romualdi@iit.it>
- * @copyright 2018 iCub Facility - Istituto Italiano di Tecnologia
- *            Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
- * @date 2018
- */
+// SPDX-FileCopyrightText: Fondazione Istituto Italiano di Tecnologia (IIT)
+// SPDX-License-Identifier: BSD-3-Clause
 
 #include <math.h>
 
@@ -13,9 +8,9 @@
 #include <yarp/os/LogStream.h>
 
 //iDynTree
-#include <iDynTree/Core/EigenHelpers.h>
-#include <iDynTree/yarp/YARPConversions.h>
-#include <iDynTree/yarp/YARPEigenConversions.h>
+#include <iDynTree/EigenHelpers.h>
+#include <iDynTree/YARPConversions.h>
+#include <iDynTree/YARPEigenConversions.h>
 
 #include <WalkingControllers/TrajectoryPlanner/StableDCMModel.h>
 #include <WalkingControllers/YarpUtilities/Helper.h>

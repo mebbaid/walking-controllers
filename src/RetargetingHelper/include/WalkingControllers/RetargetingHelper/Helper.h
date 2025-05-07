@@ -1,10 +1,5 @@
-/**
- * @file Helper.h
- * @authors Giulio Romualdi <giulio.romualdi@iit.it>
- * @copyright 2019 iCub Facility - Istituto Italiano di Tecnologia
- *            Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
- * @date 2019
- */
+// SPDX-FileCopyrightText: Fondazione Istituto Italiano di Tecnologia (IIT)
+// SPDX-License-Identifier: BSD-3-Clause
 
 #ifndef WALKING_CONTROLLERS_RETARGETING_HELPER_HELPER_H
 #define WALKING_CONTROLLERS_RETARGETING_HELPER_HELPER_H
@@ -14,9 +9,9 @@
 #include <vector>
 
 // iDyntree
-#include <iDynTree/Core/Rotation.h>
-#include <iDynTree/Core/Transform.h>
-#include <iDynTree/Core/VectorDynSize.h>
+#include <iDynTree/Rotation.h>
+#include <iDynTree/Transform.h>
+#include <iDynTree/VectorDynSize.h>
 
 // yarp
 #include <yarp/os/BufferedPort.h>
@@ -102,6 +97,11 @@ private:
 
     /** Factor required to scale the human CoM displacement to a desired robot CoM displacement */
     double m_comHeightScalingFactor;
+
+    /** Flag to check if we received the initial value for the CoM height. */
+    bool m_comOffsetSet{ false };
+
+    iDynTree::Vector2 m_comVariationRange; /**< Range of variation of the CoM height */
 
     /** Mapping between the retarget joints and the controlled. */
     std::unordered_map<std::string, int> m_retargetedJointsToControlJoints;

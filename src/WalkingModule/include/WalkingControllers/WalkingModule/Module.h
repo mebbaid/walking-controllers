@@ -1,19 +1,15 @@
-/**
- * @file WalkingModule.hpp
- * @authors Giulio Romualdi <giulio.romualdi@iit.it>
- * @copyright 2018 iCub Facility - Istituto Italiano di Tecnologia
- *            Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
- * @date 2018
- */
+// SPDX-FileCopyrightText: Fondazione Istituto Italiano di Tecnologia (IIT)
+// SPDX-License-Identifier: BSD-3-Clause
 
 #ifndef WALKING_MODULE_HPP
 #define WALKING_MODULE_HPP
 
 // std
 #include <WalkingControllers/WholeBodyControllers/BLFIK.h>
-#include <iDynTree/Core/Rotation.h>
+#include <iDynTree/Rotation.h>
 #include <memory>
 #include <deque>
+#include <vector>
 
 // YARP
 #include <yarp/os/RFModule.h>
@@ -28,8 +24,8 @@
 
 
 // iDynTree
-#include <iDynTree/Core/VectorFixSize.h>
-#include <iDynTree/ModelIO/ModelLoader.h>
+#include <iDynTree/VectorFixSize.h>
+#include <iDynTree/ModelLoader.h>
 
 // WalkingControllers library
 #include <WalkingControllers/RobotInterface/Helper.h>
@@ -47,6 +43,8 @@
 #include <WalkingControllers/KinDynWrapper/Wrapper.h>
 
 #include <WalkingControllers/RetargetingHelper/Helper.h>
+
+#include <WalkingControllers/YarpUtilities/TransformHelper.h>
 
 // iCub-ctrl
 #include <iCub/ctrl/filters.h>
@@ -66,6 +64,8 @@ namespace WalkingControllers
 
         double m_dT; /**< RFModule period. */
         double m_time; /**< Current time. */
+        double m_lastSetGoalTime; /**< Time of the last set goal. */
+        double m_maxTimeToWaitForGoal; /**< Maximum time to wait for a goal. */
         std::string m_robot; /**< Robot name. */
 
         bool m_useMPC; /**< True if the MPC controller is used. */
@@ -92,7 +92,10 @@ namespace WalkingControllers
         std::unique_ptr<WalkingPIDHandler> m_PIDHandler; /**< Pointer to the PID handler object. */
         std::unique_ptr<RetargetingClient> m_retargetingClient; /**< Pointer to the stable DCM dynamics. */
         std::unique_ptr<BipedalLocomotion::System::TimeProfiler> m_profiler; /**< Time profiler. */
+        std::unique_ptr<YarpUtilities::TransformHelper> m_transformHelper; /**< Transform server/client helper. */
         BipedalLocomotion::Contacts::GlobalCoPEvaluator m_globalCoPEvaluator;
+
+        std::vector<std::pair<iDynTree::FrameIndex, std::string>> m_framesToStream; /**< Frames to send to the transform server. */
 
         double m_additionalRotationWeightDesired; /**< Desired additional rotational weight matrix. */
         double m_desiredJointsWeight; /**< Desired joint weight matrix. */

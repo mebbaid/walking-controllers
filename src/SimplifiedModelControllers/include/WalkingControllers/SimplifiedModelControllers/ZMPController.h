@@ -1,10 +1,5 @@
-/**
- * @file ZMPController.h
- * @authors Giulio Romualdi <giulio.romualdi@iit.it>
- * @copyright 2018 iCub Facility - Istituto Italiano di Tecnologia
- *            Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
- * @date 2018
- */
+// SPDX-FileCopyrightText: Fondazione Istituto Italiano di Tecnologia (IIT)
+// SPDX-License-Identifier: BSD-3-Clause
 
 #ifndef WALKING_CONTROLLERS_SIMPLIFIED_MODEL_CONTROLLERS_ZMP_CONTROLLER_H
 #define WALKING_CONTROLLERS_SIMPLIFIED_MODEL_CONTROLLERS_ZMP_CONTROLLER_H
@@ -20,8 +15,8 @@
 #include <iCub/ctrl/minJerkCtrl.h>
 
 // iDynTree
-#include <iDynTree/Core/VectorFixSize.h>
-#include <iDynTree/Core/Position.h>
+#include <iDynTree/VectorFixSize.h>
+#include <iDynTree/Position.h>
 
 namespace WalkingControllers
 {

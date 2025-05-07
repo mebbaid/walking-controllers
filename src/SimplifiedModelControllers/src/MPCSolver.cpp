@@ -1,14 +1,9 @@
-/**
- * @file MPCSolver.cpp
- * @authors Giulio Romualdi <giulio.romualdi@iit.it>
- * @copyright 2018 iCub Facility - Istituto Italiano di Tecnologia
- *            Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
- * @date 2018
- */
+// SPDX-FileCopyrightText: Fondazione Istituto Italiano di Tecnologia (IIT)
+// SPDX-License-Identifier: BSD-3-Clause
 
 // iDynTree
-#include <iDynTree/Core/EigenHelpers.h>
-#include <iDynTree/Core/EigenSparseHelpers.h>
+#include <iDynTree/EigenHelpers.h>
+#include <iDynTree/EigenSparseHelpers.h>
 
 #include <WalkingControllers/iDynTreeUtilities/Helper.h>
 #include <WalkingControllers/SimplifiedModelControllers/MPCSolver.h>
@@ -203,12 +198,12 @@ bool MPCSolver::setGradient(const std::deque<iDynTree::Vector2>& referenceSignal
         else
         {
             // the first part is the same as before
-            for(int i = 0; i < referenceSignal.size(); i++)
+            for(size_t i = 0; i < referenceSignal.size(); i++)
             {
                 m_gradient.block<2,1>(i * m_stateSize, 0) = -iDynTree::toEigen(*m_stateWeightMatrix) *
                     iDynTree::toEigen(referenceSignal[i]);
             }
-            for(int i = referenceSignal.size(); i < (m_controllerHorizon + 1); i++)
+            for(size_t i = referenceSignal.size(); i < (m_controllerHorizon + 1); i++)
             {
                 m_gradient.block<2,1>(i * m_stateSize, 0) = -iDynTree::toEigen(*m_stateWeightMatrix) *
                     iDynTree::toEigen(referenceSignal.back());
@@ -308,7 +303,7 @@ bool MPCSolver::solve()
         return false;
     }
 
-    return m_optimizerSolver->solve();
+    return m_optimizerSolver->solveProblem() == OsqpEigen::ErrorExitFlag::NoError;
 }
 
 iDynTree::VectorDynSize MPCSolver::getSolution()

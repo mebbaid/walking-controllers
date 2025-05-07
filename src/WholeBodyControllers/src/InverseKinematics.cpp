@@ -1,11 +1,5 @@
-/**
- * @file WalkingInverseKinematics.cpp
- * @authors Stefano Dafarra
- *          Giulio Romualdi <giulio.romualdi@iit.it>
- * @copyright 2018 iCub Facility - Istituto Italiano di Tecnologia
- *            Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
- * @date 2018
- */
+// SPDX-FileCopyrightText: Fondazione Istituto Italiano di Tecnologia (IIT)
+// SPDX-License-Identifier: BSD-3-Clause
 
 // YARP
 #include <yarp/os/all.h>
@@ -13,14 +7,14 @@
 #include <yarp/sig/all.h>
 
 //iDynTree
-#include <iDynTree/Model/Model.h>
-#include <iDynTree/Core/Transform.h>
-#include <iDynTree/Core/VectorFixSize.h>
-#include <iDynTree/Core/VectorDynSize.h>
-#include <iDynTree/Core/MatrixDynSize.h>
-#include <iDynTree/Core/EigenHelpers.h>
-#include <iDynTree/ModelIO/ModelLoader.h>
-#include <iDynTree/yarp/YARPConfigurationsLoader.h>
+#include <iDynTree/Model.h>
+#include <iDynTree/Transform.h>
+#include <iDynTree/VectorFixSize.h>
+#include <iDynTree/VectorDynSize.h>
+#include <iDynTree/MatrixDynSize.h>
+#include <iDynTree/EigenHelpers.h>
+#include <iDynTree/ModelLoader.h>
+#include <iDynTree/YARPConfigurationsLoader.h>
 #include <iDynTree/KinDynComputations.h>
 
 // Eigen
@@ -229,7 +223,7 @@ bool WalkingIK::setFullModelFeedBack(const iDynTree::VectorDynSize& feedback)
 {
     if(feedback.size() != m_ik.fullModel().getNrOfDOFs())
     {
-        yError("WalkingIK: The feedback is expected to have the same dimension of the total number of degrees of freedom of the model. Input -> %d != %lu <- Model.",
+        yError("WalkingIK: The feedback is expected to have the same dimension of the total number of degrees of freedom of the model. Input -> %lu != %lu <- Model.",
                feedback.size(), m_ik.fullModel().getNrOfDOFs());
         return false;
     }
@@ -321,7 +315,7 @@ bool WalkingIK::setInitialGuess(const iDynTree::VectorDynSize& guess)
 {
     if(guess.size() != m_ik.reducedModel().getNrOfDOFs())
     {
-        yError("WalkingIK: The guess is expected to have the same dimension of the reduced number of degrees of freedom. Input -> %d != %lu <- Model.",guess.size(), m_ik.reducedModel().getNrOfDOFs());
+        yError("WalkingIK: The guess is expected to have the same dimension of the reduced number of degrees of freedom. Input -> %lu != %lu <- Model.",guess.size(), m_ik.reducedModel().getNrOfDOFs());
         return false;
     }
 
@@ -334,7 +328,7 @@ bool WalkingIK::setDesiredJointConfiguration(const iDynTree::VectorDynSize& desi
 {
     if(desiredJointConfiguration.size() != m_ik.reducedModel().getNrOfDOFs())
     {
-        yError("WalkingIK: The desiredJointConfiguration is expected to have the same dimension of the reduced number of degrees of freedom. Input -> %d != %lu <- Model.",desiredJointConfiguration.size(), m_ik.reducedModel().getNrOfDOFs());
+        yError("WalkingIK: The desiredJointConfiguration is expected to have the same dimension of the reduced number of degrees of freedom. Input -> %lu != %lu <- Model.",desiredJointConfiguration.size(), m_ik.reducedModel().getNrOfDOFs());
         return false;
     }
 

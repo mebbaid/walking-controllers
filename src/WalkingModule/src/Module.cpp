@@ -1,11 +1,5 @@
-
-/**
- * @file WalkingModule.cpp
- * @authors Giulio Romualdi <giulio.romualdi@iit.it>
- * @copyright 2018 iCub Facility - Istituto Italiano di Tecnologia
- *            Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
- * @date 2018
- */
+// SPDX-FileCopyrightText: Fondazione Istituto Italiano di Tecnologia (IIT)
+// SPDX-License-Identifier: BSD-3-Clause
 
 // std
 #include <iostream>
@@ -22,11 +16,11 @@
 #include <yarp/os/LogStream.h>
 
 // iDynTree
-#include <iDynTree/Core/VectorFixSize.h>
-#include <iDynTree/Core/EigenHelpers.h>
-#include <iDynTree/yarp/YARPConversions.h>
-#include <iDynTree/yarp/YARPEigenConversions.h>
-#include <iDynTree/Model/Model.h>
+#include <iDynTree/VectorFixSize.h>
+#include <iDynTree/EigenHelpers.h>
+#include <iDynTree/YARPConversions.h>
+#include <iDynTree/YARPEigenConversions.h>
+#include <iDynTree/Model.h>
 
 // blf
 #include <BipedalLocomotion/ParametersHandler/IParametersHandler.h>
@@ -144,6 +138,7 @@ bool WalkingModule::configure(yarp::os::ResourceFinder &rf)
     std::string goalSuffix = rf.check("goal_port_suffix", yarp::os::Value("/goal:i")).asString();
     m_skipDCMController = rf.check("skip_dcm_controller", yarp::os::Value(false)).asBool();
     m_removeZMPOffset = rf.check("remove_zmp_offset", yarp::os::Value(false)).asBool();
+    m_maxTimeToWaitForGoal = rf.check("max_time_to_wait_for_goal", yarp::os::Value(1.0)).asFloat64();
 
     m_goalScaling.resize(3);
     if (!YarpUtilities::getVectorFromSearchable(rf, "goal_port_scaling", m_goalScaling))
@@ -163,10 +158,10 @@ bool WalkingModule::configure(yarp::os::ResourceFinder &rf)
 
     double maxFBDelay = rf.check("max_feedback_delay_in_s", yarp::os::Value(1.0)).asFloat64();
     m_feedbackAttemptDelay = m_dT / 10;
-    m_feedbackAttempts = maxFBDelay / m_feedbackAttemptDelay;
+    m_feedbackAttempts = static_cast<size_t>(std::round(maxFBDelay / m_feedbackAttemptDelay));
 
     double plannerAdvanceTimeInS = rf.check("planner_advance_time_in_s", yarp::os::Value(0.18)).asFloat64();
-    m_plannerAdvanceTimeSteps = std::round(plannerAdvanceTimeInS / m_dT) + 2; // The additional 2 steps are because the trajectory from the planner is requested two steps in advance wrt the merge point
+    m_plannerAdvanceTimeSteps = static_cast<size_t>(std::round(plannerAdvanceTimeInS / m_dT)) + 2; // The additional 2 steps are because the trajectory from the planner is requested two steps in advance wrt the merge point
 
     std::string name;
     if (!YarpUtilities::getStringFromSearchable(generalOptions, "name", name))
@@ -345,6 +340,33 @@ bool WalkingModule::configure(yarp::os::ResourceFinder &rf)
         return false;
     }
 
+    // configure the transform helper
+    yarp::os::Bottle transformHelperOptions = rf.findGroup("TRANSFORM_HELPER");
+    if (!transformHelperOptions.isNull())
+    {
+        transformHelperOptions.append(generalOptions);
+        m_transformHelper = std::make_unique<YarpUtilities::TransformHelper>();
+        if (!m_transformHelper->configure(transformHelperOptions))
+        {
+            yWarning() << "[WalkingModule::configure] Failed to configure the transform helper. Avoiding using it.";
+            m_transformHelper.reset(nullptr);
+        }
+        else {
+            for (const std::string& frame : m_transformHelper->getAdditionalFrames())
+            {
+                iDynTree::FrameIndex frameIndex = m_loader.model().getFrameIndex(frame);
+                if (frameIndex != iDynTree::FRAME_INVALID_INDEX)
+                {
+                    m_framesToStream.push_back({ frameIndex, frame });
+                }
+                else
+                {
+                    yWarning() << "[WalkingModule::configure] Frame " << frame << " not found in the model. It will not be published in the transform server.";
+                }
+            }
+        }
+    }
+
     // initialize the logger
     if (m_dumpData)
     {
@@ -429,7 +451,7 @@ bool WalkingModule::configure(yarp::os::ResourceFinder &rf)
 
     // time profiler
     m_profiler = std::make_unique<BipedalLocomotion::System::TimeProfiler>();
-    m_profiler->setPeriod(round(1 / m_dT));
+    m_profiler->setPeriod(static_cast<int>(round(1 / m_dT)));
     if (m_useMPC)
         m_profiler->addTimer("MPC");
 
@@ -496,6 +518,7 @@ bool WalkingModule::close()
     m_IKSolver.reset(nullptr);
     m_FKSolver.reset(nullptr);
     m_stableDCMModel.reset(nullptr);
+    m_transformHelper.reset(nullptr);
 
     return true;
 }
@@ -507,7 +530,7 @@ bool WalkingModule::solveBLFIK(const iDynTree::Position &desiredCoMPosition,
 {
     const std::string phase = m_isStancePhase.front() ? "stance" : "walking";
     bool ok = m_BLFIKSolver->setPhase(phase);
-    ok = ok && m_BLFIKSolver->setTorsoSetPoint(desiredNeckOrientation.inverse());
+    ok = ok && m_BLFIKSolver->setTorsoSetPoint(desiredNeckOrientation);
 
     ok = ok && m_BLFIKSolver->setLeftFootSetPoint(m_leftTrajectory.front(),
                                                   m_leftTwistTrajectory.front());
@@ -677,6 +700,16 @@ bool WalkingModule::updateModule()
         {
             applyGoalScaling(*desiredUnicyclePosition);
             if (!setPlannerInput(*desiredUnicyclePosition))
+            {
+                yError() << "[WalkingModule::updateModule] Unable to set the planner input";
+                return false;
+            }
+            m_lastSetGoalTime = m_time;
+        }
+        else if (!m_firstRun && ((m_time - m_lastSetGoalTime) > m_maxTimeToWaitForGoal))
+        {
+            yarp::sig::Vector dummy(3, 0.0);
+            if (!setPlannerInput(dummy))
             {
                 yError() << "[WalkingModule::updateModule] Unable to set the planner input";
                 return false;
@@ -911,7 +944,7 @@ bool WalkingModule::updateModule()
                 return false;
             }
 
-            yawRotation = yawRotation * m_trajectoryGenerator->getChestAdditionalRotation();
+            yawRotation = yawRotation.inverse() * m_trajectoryGenerator->getChestAdditionalRotation();
 
             if (!solveBLFIK(desiredCoMPosition,
                             desiredCoMVelocity,
@@ -960,6 +993,29 @@ bool WalkingModule::updateModule()
             }
         }
         m_profiler->setEndTime("IK");
+
+        if (m_transformHelper)
+        {
+            if (!m_transformHelper->setBaseTransform(m_FKSolver->getRootLinkToWorldTransform()))
+            {
+                yWarning() << "[WalkingModule::updateModule] Unable to publish the base transform.";
+            }
+
+            if (!m_transformHelper->setJoystickTransform(m_trajectoryGenerator->getUnicyclePose()))
+            {
+                yWarning() << "[WalkingModule::updateModule] Unable to publish the joystick transform.";
+            }
+
+            auto kinDynPointer = m_FKSolver->getKinDyn();
+
+            for (const auto& frame : m_framesToStream)
+            {
+                if (!m_transformHelper->setTransform(frame.second, kinDynPointer->getWorldTransform(frame.first)))
+                {
+                    yWarning() << "[WalkingModule::updateModule] Unable to publish the transform of" << frame.second;
+                }
+            }
+        }
 
         if (!m_robotControlHelper->setDirectPositionReferences(m_qDesired))
         {

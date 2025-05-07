@@ -1,10 +1,5 @@
-/**
- * @file Helper.h
- * @authors Giulio Romualdi <giulio.romualdi@iit.it>
- * @copyright 2019 iCub Facility - Istituto Italiano di Tecnologia
- *            Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
- * @date 2019
- */
+// SPDX-FileCopyrightText: Fondazione Istituto Italiano di Tecnologia (IIT)
+// SPDX-License-Identifier: BSD-3-Clause
 
 #ifndef WALKING_CONTROLLERS_IDYNTREE_HELPER_H
 #define WALKING_CONTROLLERS_IDYNTREE_HELPER_H
@@ -14,10 +9,10 @@
 #include <deque>
 
 // iDynTree
-#include <iDynTree/Core/Triplets.h>
-#include <iDynTree/Core/VectorFixSize.h>
-#include <iDynTree/Core/SparseMatrix.h>
-#include <iDynTree/Core/Rotation.h>
+#include <iDynTree/Triplets.h>
+#include <iDynTree/VectorFixSize.h>
+#include <iDynTree/SparseMatrix.h>
+#include <iDynTree/Rotation.h>
 
 // YARP
 #include <yarp/os/Value.h>

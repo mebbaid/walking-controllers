@@ -1,10 +1,5 @@
-/**
- * @file DCMModelPredictiveController.hpp
- * @authors Giulio Romualdi <giulio.romualdi@iit.it>
- * @copyright 2018 iCub Facility - Istituto Italiano di Tecnologia
- *            Released under the terms of the LGPLv2.1 or later, see LGPL.TXT
- * @date 2018
- */
+// SPDX-FileCopyrightText: Fondazione Istituto Italiano di Tecnologia (IIT)
+// SPDX-License-Identifier: BSD-3-Clause
 
 
 #ifndef WALKING_CONTROLLERS_SIMPLIFIED_MODEL_CONTROLLERS_DCM_MPC_H
@@ -17,8 +12,8 @@
 #include <Eigen/Sparse>
 
 // iDynTree
-#include <iDynTree/Core/Triplets.h>
-#include <iDynTree/Core/SparseMatrix.h>
+#include <iDynTree/Triplets.h>
+#include <iDynTree/SparseMatrix.h>
 #include <iDynTree/ConvexHullHelpers.h>
 
 // yarp
