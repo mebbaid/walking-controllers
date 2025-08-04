@@ -43,6 +43,8 @@ public:
         Walking
     };
 
+    bool m_UseJoints{false}; /**< True if the retargeting of the joints is used */
+
 private:
     template <class PortData> struct RetargetingElement
     {

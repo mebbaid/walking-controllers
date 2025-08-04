@@ -508,9 +508,18 @@ bool WalkingModule::solveBLFIK(const iDynTree::Position &desiredCoMPosition,
     ok = ok && m_BLFIKSolver->setRightFootSetPoint(m_rightTrajectory.front(),
                                                    m_rightTwistTrajectory.front());
     ok = ok && m_BLFIKSolver->setCoMSetPoint(desiredCoMPosition, desiredCoMVelocity);
-    ok = ok && m_BLFIKSolver->setRetargetingJointSetPoint(m_retargetingClient->jointPositions(),
-                                                          m_retargetingClient->jointVelocities());
 
+    if(m_retargetingClient->m_UseJoints)
+    {
+        ok = ok && m_BLFIKSolver->setRetargetingJointSetPoint(m_retargetingClient->jointPositions(),
+                                                          m_retargetingClient->jointVelocities());
+    }                                                      
+    else if(!(m_retargetingClient->m_UseJoints))
+    {
+        // use current joint positions and velocities
+        ok = ok && m_BLFIKSolver->setRetargetingJointSetPoint(m_robotControlHelper->getJointPosition(),
+                                                                m_robotControlHelper->getJointVelocity());
+    }
     if (m_useRootLinkForHeight)
     {
         ok = ok && m_BLFIKSolver->setRootSetPoint(desiredCoMPosition, desiredCoMVelocity);
