@@ -499,6 +499,7 @@ bool WalkingModule::solveBLFIK(const iDynTree::Position &desiredCoMPosition,
                                const iDynTree::Rotation &desiredNeckOrientation,
                                iDynTree::VectorDynSize &output)
 {
+
     const std::string phase = m_isStancePhase.front() ? "stance" : "walking";
     bool ok = m_BLFIKSolver->setPhase(phase);
     ok = ok && m_BLFIKSolver->setTorsoSetPoint(desiredNeckOrientation);
@@ -509,17 +510,8 @@ bool WalkingModule::solveBLFIK(const iDynTree::Position &desiredCoMPosition,
                                                    m_rightTwistTrajectory.front());
     ok = ok && m_BLFIKSolver->setCoMSetPoint(desiredCoMPosition, desiredCoMVelocity);
 
-    if(m_retargetingClient->m_UseJoints)
-    {
-        ok = ok && m_BLFIKSolver->setRetargetingJointSetPoint(m_retargetingClient->jointPositions(),
+    ok = ok && m_BLFIKSolver->setRetargetingJointSetPoint(m_retargetingClient->jointPositions(),
                                                           m_retargetingClient->jointVelocities());
-    }                                                      
-    else if(!(m_retargetingClient->m_UseJoints))
-    {
-        // use current joint positions and velocities
-        ok = ok && m_BLFIKSolver->setRetargetingJointSetPoint(m_robotControlHelper->getJointPosition(),
-                                                                m_robotControlHelper->getJointVelocity());
-    }
     if (m_useRootLinkForHeight)
     {
         ok = ok && m_BLFIKSolver->setRootSetPoint(desiredCoMPosition, desiredCoMVelocity);
