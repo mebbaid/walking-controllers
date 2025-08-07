@@ -42,6 +42,13 @@ bool BLFIK::initialize(
     m_useHandRetargeting = false;
     ptr->getParameter("use_hand_retargeting", m_useHandRetargeting);
 
+
+    if (m_usejointRetargeting && m_useHandRetargeting)
+    {
+        BipedalLocomotion::log()->error("{} Cannot use both joint and hand retargeting at the same time.", prefix);
+        return false;
+    }
+
     ptr->getParameter("use_feedforward_term_for_joint_retargeting",
                       m_useFeedforwardTermForJointRetargeting);
 
@@ -58,6 +65,7 @@ bool BLFIK::initialize(
     m_torsoWeight
         = std::make_shared<BipedalLocomotion::ContinuousDynamicalSystem::MultiStateWeightProvider>();
     ok = ok && m_torsoWeight->initialize(ptr->getGroup("TORSO_TASK"));
+
 
     if (m_usejointRetargeting)
     {
@@ -77,7 +85,7 @@ bool BLFIK::initialize(
         m_leftHandWeight
             = std::make_shared<BipedalLocomotion::ContinuousDynamicalSystem::MultiStateWeightProvider>();
         ok = ok && m_leftHandWeight->initialize(ptr->getGroup("LEFT_HAND_TASK"));
-
+        std::cout << "[BLFIK::initialize] Left hand task weight initialized with ok value: " << ok << std::endl;
         m_rightHandWeight
             = std::make_shared<BipedalLocomotion::ContinuousDynamicalSystem::MultiStateWeightProvider>();
         ok = ok && m_rightHandWeight->initialize(ptr->getGroup("RIGHT_HAND_TASK"));
@@ -157,6 +165,7 @@ bool BLFIK::initialize(
 
 bool BLFIK::solve()
 {
+    std::cerr << "[BLFIK::solve] Solving IK... -   ---------------------" << std::endl;
     bool ok = m_torsoWeight->advance();
     ok = ok && m_jointRegularizationWeight->advance();
     if (m_usejointRetargeting)
@@ -170,6 +179,7 @@ bool BLFIK::solve()
         ok = ok && m_rightHandWeight->advance();
     }
 
+    std::cerr << "[BLFIK::solve] Advancing tasks... -   ---------------------" << std::endl;
     ok = ok && m_qpIK.advance();
     ok = ok && m_qpIK.isOutputValid();
 
@@ -231,25 +241,31 @@ bool BLFIK::setRetargetingJointSetPoint(const iDynTree::VectorDynSize& jointPosi
     return true;
 }
 
-bool BLFIK::setLeftHandSetPoint(const iDynTree::Position& position,
-                                const iDynTree::Vector3& velocity)
+bool BLFIK::setLeftHandSetPoint(const iDynTree::Transform& desiredTransform)
 {
     if (m_useHandRetargeting)
     {
-        return m_leftHandTask->setSetPoint(iDynTree::toEigen(position), iDynTree::toEigen(velocity));
+        // Use the converter for the full pose.
+        // Set the desired velocity (twist) to zero since it's a static target.
+        return m_leftHandTask->setSetPoint(BipedalLocomotion::Conversions::toManifPose(desiredTransform),
+                                           iDynTree::toEigen(iDynTree::Twist::Zero()));
     }
     return true;
 }
 
-bool BLFIK::setRightHandSetPoint(const iDynTree::Position& position,
-                                 const iDynTree::Vector3& velocity)
+// Note: The arguments have changed from (Position, Vector3) to (Transform)
+bool BLFIK::setRightHandSetPoint(const iDynTree::Transform& desiredTransform)
 {
     if (m_useHandRetargeting)
     {
-        return m_rightHandTask->setSetPoint(iDynTree::toEigen(position), iDynTree::toEigen(velocity));
+        // Use the converter for the full pose.
+        // Set the desired velocity (twist) to zero since it's a static target.
+        return m_rightHandTask->setSetPoint(BipedalLocomotion::Conversions::toManifPose(desiredTransform),
+                                            iDynTree::toEigen(iDynTree::Twist::Zero()));
     }
     return true;
 }
+
 
 bool BLFIK::setRegularizationJointSetPoint(const iDynTree::VectorDynSize& jointPosition)
 {

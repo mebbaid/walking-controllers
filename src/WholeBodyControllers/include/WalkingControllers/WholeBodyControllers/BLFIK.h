@@ -44,8 +44,8 @@ public:
     bool setCoMSetPoint(const iDynTree::Position& position, const iDynTree::Vector3& velocity);
     bool setRootSetPoint(const iDynTree::Position& position, const iDynTree::Vector3& velocity);
     bool setTorsoSetPoint(const iDynTree::Rotation& rotation);
-    bool setLeftHandSetPoint(const iDynTree::Position& position, const iDynTree::Vector3& velocity);
-    bool setRightHandSetPoint(const iDynTree::Position& position, const iDynTree::Vector3& velocity);
+    bool setLeftHandSetPoint(const iDynTree::Transform& desiredTransform);
+    bool setRightHandSetPoint(const iDynTree::Transform& desiredTransform);
     const iDynTree::VectorDynSize& getDesiredJointVelocity() const;
 
 private:
@@ -74,8 +74,8 @@ private:
     std::shared_ptr<BipedalLocomotion::IK::JointTrackingTask> m_jointRegularizationTask;
 
     // left and right hand position tasks (collaborative walking    )
-    std::shared_ptr<BipedalLocomotion::IK::R3Task> m_leftHandTask;
-    std::shared_ptr<BipedalLocomotion::IK::R3Task> m_rightHandTask;
+    std::shared_ptr<BipedalLocomotion::IK::SE3Task> m_leftHandTask;
+    std::shared_ptr<BipedalLocomotion::IK::SE3Task> m_rightHandTask;
 
     iDynTree::VectorDynSize m_jointVelocity;
     bool m_usejointRetargeting{false};

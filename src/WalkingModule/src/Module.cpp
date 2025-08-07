@@ -1224,6 +1224,8 @@ bool WalkingModule::prepareRobot(bool onTheFly)
         m_robotState = WalkingFSM::Preparing;
     }
 
+    std::cerr << "[WalkingModule::prepareRobot] The robot is about to be prepared." << std::endl;
+
     return true;
 }
 

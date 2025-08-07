@@ -101,6 +101,7 @@ bool RetargetingClient::initialize(const yarp::os::Searchable &config,
                 return false;
             }
 
+            hand.yarpReadBuffer.resize(6);
             hand.smoother.yarpBuffer.resize(6);
             hand.smoother.smoother = std::make_unique<iCub::ctrl::minJerkTrajGen>(6, period, hand.smoother.smoothingTimeInApproaching);
 
@@ -251,6 +252,7 @@ bool RetargetingClient::reset(WalkingFK& kinDynWrapper)
     {
         auto resetHandSmoother = [](auto& hand)
         {
+            
             iDynTree::toEigen(hand.yarpReadBuffer).template segment<3>(0) =
             iDynTree::toEigen(hand.transform.getPosition());
 
