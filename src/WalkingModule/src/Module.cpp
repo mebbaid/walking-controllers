@@ -511,6 +511,9 @@ bool WalkingModule::solveBLFIK(const iDynTree::Position &desiredCoMPosition,
     ok = ok && m_BLFIKSolver->setRetargetingJointSetPoint(m_retargetingClient->jointPositions(),
                                                           m_retargetingClient->jointVelocities());
 
+    ok = ok && m_BLFIKSolver->setLeftHandSetPoint(m_retargetingClient->leftHandTransform());
+    ok = ok && m_BLFIKSolver->setRightHandSetPoint(m_retargetingClient->rightHandTransform());
+
     if (m_useRootLinkForHeight)
     {
         ok = ok && m_BLFIKSolver->setRootSetPoint(desiredCoMPosition, desiredCoMVelocity);

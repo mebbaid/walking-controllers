@@ -39,6 +39,8 @@ bool BLFIK::initialize(
 
     m_usejointRetargeting = false;
     ptr->getParameter("use_joint_retargeting", m_usejointRetargeting);
+    m_useHandRetargeting = false;
+    ptr->getParameter("use_hand_retargeting", m_useHandRetargeting);
 
     ptr->getParameter("use_feedforward_term_for_joint_retargeting",
                       m_useFeedforwardTermForJointRetargeting);
@@ -67,6 +69,19 @@ bool BLFIK::initialize(
     m_jointRegularizationWeight
         = std::make_shared<BipedalLocomotion::ContinuousDynamicalSystem::MultiStateWeightProvider>();
     ok = ok && m_jointRegularizationWeight->initialize(ptr->getGroup("JOINT_REGULARIZATION_TASK"));
+
+
+    // hand retargeting weights
+    if (m_useHandRetargeting)
+    {
+        m_leftHandWeight
+            = std::make_shared<BipedalLocomotion::ContinuousDynamicalSystem::MultiStateWeightProvider>();
+        ok = ok && m_leftHandWeight->initialize(ptr->getGroup("LEFT_HAND_TASK"));
+
+        m_rightHandWeight
+            = std::make_shared<BipedalLocomotion::ContinuousDynamicalSystem::MultiStateWeightProvider>();
+        ok = ok && m_rightHandWeight->initialize(ptr->getGroup("RIGHT_HAND_TASK"));
+    }
 
     // CoM Task
     m_comTask = std::make_shared<BipedalLocomotion::IK::CoMTask>();
@@ -110,6 +125,19 @@ bool BLFIK::initialize(
                                m_jointRetargetingWeight);
     }
 
+    if (m_useHandRetargeting)
+    {
+        m_leftHandTask = std::make_shared<BipedalLocomotion::IK::SE3Task>();
+        ok = ok && m_leftHandTask->setKinDyn(kinDyn);
+        ok = ok && m_leftHandTask->initialize(ptr->getGroup("LEFT_HAND_TASK"));
+        ok = ok && m_qpIK.addTask(m_leftHandTask, "left_hand_task", lowPriority, m_leftHandWeight);
+
+        m_rightHandTask = std::make_shared<BipedalLocomotion::IK::SE3Task>();
+        ok = ok && m_rightHandTask->setKinDyn(kinDyn);
+        ok = ok && m_rightHandTask->initialize(ptr->getGroup("RIGHT_HAND_TASK"));
+        ok = ok && m_qpIK.addTask(m_rightHandTask, "right_hand_task", lowPriority, m_rightHandWeight);
+    }
+
     if (m_useRootLinkForHeight)
     {
         m_rootTask = std::make_shared<BipedalLocomotion::IK::R3Task>();
@@ -136,6 +164,12 @@ bool BLFIK::solve()
         ok = ok && m_jointRetargetingWeight->advance();
     }
 
+    if (m_useHandRetargeting)
+    {
+        ok = ok && m_leftHandWeight->advance();
+        ok = ok && m_rightHandWeight->advance();
+    }
+
     ok = ok && m_qpIK.advance();
     ok = ok && m_qpIK.isOutputValid();
 
@@ -154,6 +188,12 @@ bool BLFIK::setPhase(const std::string& phase)
 
     if (m_usejointRetargeting)
         ok = ok && m_jointRetargetingWeight->setState(phase);
+    
+    if (m_useHandRetargeting)
+    {
+        ok = ok && m_leftHandWeight->setState(phase);
+        ok = ok && m_rightHandWeight->setState(phase);
+    }
 
     return ok;
 }
@@ -187,6 +227,26 @@ bool BLFIK::setRetargetingJointSetPoint(const iDynTree::VectorDynSize& jointPosi
         {
             return m_jointRetargetingTask->setSetPoint(iDynTree::toEigen(jointPositions));
         }
+    }
+    return true;
+}
+
+bool BLFIK::setLeftHandSetPoint(const iDynTree::Position& position,
+                                const iDynTree::Vector3& velocity)
+{
+    if (m_useHandRetargeting)
+    {
+        return m_leftHandTask->setSetPoint(iDynTree::toEigen(position), iDynTree::toEigen(velocity));
+    }
+    return true;
+}
+
+bool BLFIK::setRightHandSetPoint(const iDynTree::Position& position,
+                                 const iDynTree::Vector3& velocity)
+{
+    if (m_useHandRetargeting)
+    {
+        return m_rightHandTask->setSetPoint(iDynTree::toEigen(position), iDynTree::toEigen(velocity));
     }
     return true;
 }
