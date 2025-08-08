@@ -73,7 +73,7 @@ private:
     std::shared_ptr<BipedalLocomotion::IK::JointTrackingTask> m_jointRetargetingTask;
     std::shared_ptr<BipedalLocomotion::IK::JointTrackingTask> m_jointRegularizationTask;
 
-    // left and right hand position tasks (collaborative walking    )
+    // left and right hand position tasks (collaborative walking and carrying)
     std::shared_ptr<BipedalLocomotion::IK::SE3Task> m_leftHandTask;
     std::shared_ptr<BipedalLocomotion::IK::SE3Task> m_rightHandTask;
 

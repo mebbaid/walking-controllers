@@ -239,14 +239,17 @@ bool RetargetingClient::initialize(const yarp::os::Searchable &config,
         }
         m_hdeRetargeting.port.open("/" + name + portName);
     }
+    
 
     return true;
 }
 
 bool RetargetingClient::reset(WalkingFK& kinDynWrapper)
 {
-    m_leftHand.transform = kinDynWrapper.getHeadToWorldTransform().inverse() * kinDynWrapper.getLeftHandToWorldTransform();
-    m_rightHand.transform = kinDynWrapper.getHeadToWorldTransform().inverse() * kinDynWrapper.getRightHandToWorldTransform();
+    // m_leftHand.transform = kinDynWrapper.getHeadToWorldTransform().inverse() * kinDynWrapper.getLeftHandToWorldTransform();
+    // m_rightHand.transform = kinDynWrapper.getHeadToWorldTransform().inverse() * kinDynWrapper.getRightHandToWorldTransform();
+    m_leftHand.transform = kinDynWrapper.getLeftHandToWorldTransform();
+    m_rightHand.transform = kinDynWrapper.getRightHandToWorldTransform();
 
     if(m_useHandRetargeting)
     {
@@ -264,6 +267,17 @@ bool RetargetingClient::reset(WalkingFK& kinDynWrapper)
 
         resetHandSmoother(m_leftHand);
         resetHandSmoother(m_rightHand);
+
+        std::cerr << "[RetargetingClient::reset] Left hand position: "
+                  << iDynTree::toEigen(m_leftHand.transform.getPosition()).transpose() << std::endl;
+
+        iDynTree::Transform leftFoot = kinDynWrapper.getLeftFootToWorldTransform();
+        std::cerr << "[RetargetingClient::reset] Left foot position: "
+                  << iDynTree::toEigen(leftFoot.getPosition()).transpose() << std::endl;
+
+        std::cerr << "[RetargetingClient::reset] Left hand orientation: "
+                  << iDynTree::toEigen(m_leftHand.transform.getRotation().asRPY()).transpose() << std::endl;
+                  
     }
 
     // joint retargeting

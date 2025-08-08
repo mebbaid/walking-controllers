@@ -165,7 +165,6 @@ bool BLFIK::initialize(
 
 bool BLFIK::solve()
 {
-    std::cerr << "[BLFIK::solve] Solving IK... -   ---------------------" << std::endl;
     bool ok = m_torsoWeight->advance();
     ok = ok && m_jointRegularizationWeight->advance();
     if (m_usejointRetargeting)
@@ -179,7 +178,6 @@ bool BLFIK::solve()
         ok = ok && m_rightHandWeight->advance();
     }
 
-    std::cerr << "[BLFIK::solve] Advancing tasks... -   ---------------------" << std::endl;
     ok = ok && m_qpIK.advance();
     ok = ok && m_qpIK.isOutputValid();
 
@@ -246,7 +244,7 @@ bool BLFIK::setLeftHandSetPoint(const iDynTree::Transform& desiredTransform)
     if (m_useHandRetargeting)
     {
         // Use the converter for the full pose.
-        // Set the desired velocity (twist) to zero since it's a static target.
+        // Set the desired velocity (twist) to zero since for now (TODO)
         return m_leftHandTask->setSetPoint(BipedalLocomotion::Conversions::toManifPose(desiredTransform),
                                            iDynTree::toEigen(iDynTree::Twist::Zero()));
     }
@@ -259,7 +257,7 @@ bool BLFIK::setRightHandSetPoint(const iDynTree::Transform& desiredTransform)
     if (m_useHandRetargeting)
     {
         // Use the converter for the full pose.
-        // Set the desired velocity (twist) to zero since it's a static target.
+        // Set the desired velocity (twist) to zero since for now (TODO)
         return m_rightHandTask->setSetPoint(BipedalLocomotion::Conversions::toManifPose(desiredTransform),
                                             iDynTree::toEigen(iDynTree::Twist::Zero()));
     }

@@ -510,9 +510,14 @@ bool WalkingModule::solveBLFIK(const iDynTree::Position &desiredCoMPosition,
     ok = ok && m_BLFIKSolver->setCoMSetPoint(desiredCoMPosition, desiredCoMVelocity);
     ok = ok && m_BLFIKSolver->setRetargetingJointSetPoint(m_retargetingClient->jointPositions(),
                                                           m_retargetingClient->jointVelocities());
-
+                                                          
     ok = ok && m_BLFIKSolver->setLeftHandSetPoint(m_retargetingClient->leftHandTransform());
     ok = ok && m_BLFIKSolver->setRightHandSetPoint(m_retargetingClient->rightHandTransform());
+
+    std::cerr << "[WalkingModule::solveBLFIK] Desired left hand position: "
+              << m_retargetingClient->leftHandTransform().getPosition().toString() << std::endl;
+    // std::cerr << "[WalkingModule::solveBLFIK] Desired left hand orientation: "
+    //           << m_retargetingClient->leftHandTransform().getRotation().asRPY().toString() << std::endl;
 
     if (m_useRootLinkForHeight)
     {
@@ -1223,8 +1228,6 @@ bool WalkingModule::prepareRobot(bool onTheFly)
         std::lock_guard<std::mutex> guard(m_mutex);
         m_robotState = WalkingFSM::Preparing;
     }
-
-    std::cerr << "[WalkingModule::prepareRobot] The robot is about to be prepared." << std::endl;
 
     return true;
 }
