@@ -14,6 +14,7 @@
 #include <BipedalLocomotion/IK/R3Task.h>
 #include <BipedalLocomotion/IK/SE3Task.h>
 #include <BipedalLocomotion/IK/SO3Task.h>
+#include <BipedalLocomotion/IK/DistanceTask.h>
 #include <BipedalLocomotion/ParametersHandler/IParametersHandler.h>
 #include <BipedalLocomotion/System/VariablesHandler.h>
 
@@ -44,8 +45,9 @@ public:
     bool setCoMSetPoint(const iDynTree::Position& position, const iDynTree::Vector3& velocity);
     bool setRootSetPoint(const iDynTree::Position& position, const iDynTree::Vector3& velocity);
     bool setTorsoSetPoint(const iDynTree::Rotation& rotation);
-    bool setLeftHandSetPoint(const iDynTree::Transform& desiredTransform);
-    bool setRightHandSetPoint(const iDynTree::Transform& desiredTransform);
+    bool setLeftHandSetPoint(const iDynTree::Position& position, const iDynTree::Vector3& velocity);
+    bool setRightHandSetPoint(const iDynTree::Position& position, const iDynTree::Vector3& velocity);
+    bool setDistanceSetPoint(const double distance);
     const iDynTree::VectorDynSize& getDesiredJointVelocity() const;
 
 private:
@@ -60,7 +62,9 @@ private:
     std::shared_ptr<BipedalLocomotion::ContinuousDynamicalSystem::MultiStateWeightProvider>
         m_leftHandWeight;
     std::shared_ptr<BipedalLocomotion::ContinuousDynamicalSystem::MultiStateWeightProvider>
-        m_rightHandWeight;    
+        m_rightHandWeight;
+    std::shared_ptr<BipedalLocomotion::ContinuousDynamicalSystem::MultiStateWeightProvider>
+        m_distanceWeight;
 
     BipedalLocomotion::IK::QPInverseKinematics m_qpIK;
     BipedalLocomotion::System::VariablesHandler m_variableHandler;
@@ -74,8 +78,9 @@ private:
     std::shared_ptr<BipedalLocomotion::IK::JointTrackingTask> m_jointRegularizationTask;
 
     // left and right hand position tasks (collaborative walking and carrying)
-    std::shared_ptr<BipedalLocomotion::IK::SE3Task> m_leftHandTask;
-    std::shared_ptr<BipedalLocomotion::IK::SE3Task> m_rightHandTask;
+    std::shared_ptr<BipedalLocomotion::IK::R3Task> m_leftHandTask;
+    std::shared_ptr<BipedalLocomotion::IK::R3Task> m_rightHandTask;
+    std::shared_ptr<BipedalLocomotion::IK::DistanceTask> m_distanceTask;
 
     iDynTree::VectorDynSize m_jointVelocity;
     bool m_usejointRetargeting{false};

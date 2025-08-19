@@ -510,14 +510,24 @@ bool WalkingModule::solveBLFIK(const iDynTree::Position &desiredCoMPosition,
     ok = ok && m_BLFIKSolver->setCoMSetPoint(desiredCoMPosition, desiredCoMVelocity);
     ok = ok && m_BLFIKSolver->setRetargetingJointSetPoint(m_retargetingClient->jointPositions(),
                                                           m_retargetingClient->jointVelocities());
-                                                          
-    ok = ok && m_BLFIKSolver->setLeftHandSetPoint(m_retargetingClient->leftHandTransform());
-    ok = ok && m_BLFIKSolver->setRightHandSetPoint(m_retargetingClient->rightHandTransform());
+
+    iDynTree::Vector3 desiredHandVelocity;
+    desiredHandVelocity.zero();
+    auto desiredLeftHandPosition = m_FKSolver->getLeftHandToWorldTransform().getPosition();
+    // auto world_to_root = m_FKSolver->getRootLinkToWorldTransform();
+    auto world_to_desired = std::min(m_retargetingClient->leftHandTransform().getPosition()(2) + 0.8,1.0);
+    desiredLeftHandPosition(2) = world_to_desired;
+      // Set z position to m_retargetingClient->leftHandTransform().getPosition()(2)
+    ok = ok && m_BLFIKSolver->setLeftHandSetPoint(desiredLeftHandPosition, desiredHandVelocity);
+    auto desiredRightHandPosition = m_FKSolver->getRightHandToWorldTransform().getPosition();
+    desiredRightHandPosition(2) = world_to_desired;  // Set z position to m_retargetingClient->rightHandTransform().getPosition()(2)
+    ok = ok && m_BLFIKSolver->setRightHandSetPoint(desiredRightHandPosition, desiredHandVelocity);
+
+    ok = ok && m_BLFIKSolver->setDistanceSetPoint(0.4);
 
     std::cerr << "[WalkingModule::solveBLFIK] Desired left hand position: "
-              << m_retargetingClient->leftHandTransform().getPosition().toString() << std::endl;
-    // std::cerr << "[WalkingModule::solveBLFIK] Desired left hand orientation: "
-    //           << m_retargetingClient->leftHandTransform().getRotation().asRPY().toString() << std::endl;
+              << desiredLeftHandPosition.toString() << std::endl;
+
 
     if (m_useRootLinkForHeight)
     {

@@ -325,6 +325,8 @@ bool RetargetingClient::getFeedback()
             auto desiredHandPose = hand.port.read(false);
             if(desiredHandPose != nullptr)
             {
+                yInfo() << "[RetargetingClient::getFeedback] Left hand desired pose: "
+                     << desiredHandPose->toString();
                 this->enableApproachingIfNecessary();
                 hand.smoother.smoother->computeNextValues(*desiredHandPose);
             }
