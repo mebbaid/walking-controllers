@@ -511,16 +511,6 @@ bool WalkingModule::solveBLFIK(const iDynTree::Position &desiredCoMPosition,
     ok = ok && m_BLFIKSolver->setRetargetingJointSetPoint(m_retargetingClient->jointPositions(),
                                                           m_retargetingClient->jointVelocities());
 
-    // auto desiredLeftHandPosition = m_FKSolver->getLeftHandToWorldTransform().getPosition();
-    // auto world_to_desired = std::min(m_retargetingClient->leftHandTransform().getPosition()(2) + 0.5,1.2);
-    // desiredLeftHandPosition(2) = world_to_desired;
-    // std::cerr << "[WalkingModule::solveBLFIK] FK left hand position: "
-    //           << desiredLeftHandPosition.toString() << std::endl;
-    // desiredLeftHandPosition(2) += m_retargetingClient->leftHandTransform().getPosition()(2);
-    // auto desiredRightHandPosition = m_FKSolver->getRightHandToWorldTransform().getPosition();
-    // desiredRightHandPosition(2) = world_to_desired;  // Set z position to m_retargetingClient->rightHandTransform().getPosition()(2)
-    // desiredRightHandPosition(2) += m_retargetingClient->rightHandTransform().getPosition()(2);
-
     iDynTree::Vector3 desiredHandVelocity;
     desiredHandVelocity.zero();    
     ok = ok && m_BLFIKSolver->setLeftHandSetPoint(m_retargetingClient->leftHandTransform().getPosition(), desiredHandVelocity);

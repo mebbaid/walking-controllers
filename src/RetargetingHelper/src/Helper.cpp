@@ -316,54 +316,17 @@ bool RetargetingClient::getFeedback()
         auto getHandFeedback = [this](HandRetargeting& hand)
         {
             auto desiredHandPose = hand.port.read(false);
+            auto zOffset = 0.0;
             if (desiredHandPose != nullptr)
             {
                 this->enableApproachingIfNecessary();
+                zOffset = desiredHandPose->operator[](2);
 
-                // iDynTree::Position deltaPos;
-                for (int i = 0; i < 3; ++i)
-                {
-                    // deltaPos(i) = desiredHandPose->operator[](i);
-                    desiredHandPose->operator[](i) +=  hand.transform.getPosition()(i);  
-                }
-
-                // Step 2: Update current position with delta (is this problematic?)
-                // iDynTree::Position currentPos = hand.transform.getPosition();
-                // iDynTree::Position newPos = currentPos;
-                // newPos(2) += deltaPos(2);
-
-                // // Step 3: Convert newPos to yarp::sig::Vector for smoothing
-                // yarp::sig::Vector posVec(3);
-                // for (int i = 0; i < 3; ++i)
-                // {
-                //     posVec[i] = newPos(i);
-                // }
-
-                // Step 4: Feed updated position to smoother
-                // hand.smoother.smoother->computeNextValues(posVec);
                 hand.smoother.smoother->computeNextValues(*desiredHandPose);
-
-                // Step 5: Get smoothed position
-                // const yarp::sig::Vector& smoothedPosVec = hand.smoother.smoother->getPos();
-
-                // Step 6: Convert smoothedPosVec back to iDynTree::Position
-                // iDynTree::Position smoothedPos;
-                // for (int i = 0; i < 3; ++i)
-                // {
-                //     smoothedPos(i) = smoothedPosVec[i];
-                // }
-
-                // Step 7: Update transform position with smoothed position
-                // hand.transform.setPosition(smoothedPos);
-
-                // yInfo() << "[RetargetingClient::getFeedback] current pos: " << currentPos.toString()
-                //         << ", delta: " << deltaPos.toString()
-                //         << ", smoothed pos: " << smoothedPos.toString();
-
-                // TODO: also update rotation, if needed
-                // hand.transform.setRotation(...);
             }
-            convertYarpVectorPoseIntoTransform(hand.smoother.smoother->getPos(), hand.transform);
+            auto smoothPos = hand.smoother.smoother->getPos();
+            smoothPos(2) += zOffset;
+            convertYarpVectorPoseIntoTransform(smoothPos, hand.transform);
         };
 
         getHandFeedback(m_leftHand);
