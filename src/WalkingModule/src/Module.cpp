@@ -511,22 +511,25 @@ bool WalkingModule::solveBLFIK(const iDynTree::Position &desiredCoMPosition,
     ok = ok && m_BLFIKSolver->setRetargetingJointSetPoint(m_retargetingClient->jointPositions(),
                                                           m_retargetingClient->jointVelocities());
 
-    iDynTree::Vector3 desiredHandVelocity;
-    desiredHandVelocity.zero();
-    auto desiredLeftHandPosition = m_FKSolver->getLeftHandToWorldTransform().getPosition();
-    // auto world_to_root = m_FKSolver->getRootLinkToWorldTransform();
-    auto world_to_desired = std::min(m_retargetingClient->leftHandTransform().getPosition()(2) + 0.8,1.0);
-    desiredLeftHandPosition(2) = world_to_desired;
-      // Set z position to m_retargetingClient->leftHandTransform().getPosition()(2)
-    ok = ok && m_BLFIKSolver->setLeftHandSetPoint(desiredLeftHandPosition, desiredHandVelocity);
-    auto desiredRightHandPosition = m_FKSolver->getRightHandToWorldTransform().getPosition();
-    desiredRightHandPosition(2) = world_to_desired;  // Set z position to m_retargetingClient->rightHandTransform().getPosition()(2)
-    ok = ok && m_BLFIKSolver->setRightHandSetPoint(desiredRightHandPosition, desiredHandVelocity);
+    // auto desiredLeftHandPosition = m_FKSolver->getLeftHandToWorldTransform().getPosition();
+    // auto world_to_desired = std::min(m_retargetingClient->leftHandTransform().getPosition()(2) + 0.5,1.2);
+    // desiredLeftHandPosition(2) = world_to_desired;
+    // std::cerr << "[WalkingModule::solveBLFIK] FK left hand position: "
+    //           << desiredLeftHandPosition.toString() << std::endl;
+    // desiredLeftHandPosition(2) += m_retargetingClient->leftHandTransform().getPosition()(2);
+    // auto desiredRightHandPosition = m_FKSolver->getRightHandToWorldTransform().getPosition();
+    // desiredRightHandPosition(2) = world_to_desired;  // Set z position to m_retargetingClient->rightHandTransform().getPosition()(2)
+    // desiredRightHandPosition(2) += m_retargetingClient->rightHandTransform().getPosition()(2);
 
-    ok = ok && m_BLFIKSolver->setDistanceSetPoint(0.4);
+    iDynTree::Vector3 desiredHandVelocity;
+    desiredHandVelocity.zero();    
+    ok = ok && m_BLFIKSolver->setLeftHandSetPoint(m_retargetingClient->leftHandTransform().getPosition(), desiredHandVelocity);
+    ok = ok && m_BLFIKSolver->setRightHandSetPoint(m_retargetingClient->rightHandTransform().getPosition(), desiredHandVelocity);
+
+    ok = ok && m_BLFIKSolver->setDistanceSetPoint(0.4); //TODO move to config file or retrieve from HumanTrackerModule
 
     std::cerr << "[WalkingModule::solveBLFIK] Desired left hand position: "
-              << desiredLeftHandPosition.toString() << std::endl;
+              << m_retargetingClient->leftHandTransform().getPosition().toString() << std::endl;
 
 
     if (m_useRootLinkForHeight)

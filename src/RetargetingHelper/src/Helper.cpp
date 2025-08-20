@@ -270,14 +270,7 @@ bool RetargetingClient::reset(WalkingFK& kinDynWrapper)
 
         std::cerr << "[RetargetingClient::reset] Left hand position: "
                   << iDynTree::toEigen(m_leftHand.transform.getPosition()).transpose() << std::endl;
-
-        iDynTree::Transform leftFoot = kinDynWrapper.getLeftFootToWorldTransform();
-        std::cerr << "[RetargetingClient::reset] Left foot position: "
-                  << iDynTree::toEigen(leftFoot.getPosition()).transpose() << std::endl;
-
-        std::cerr << "[RetargetingClient::reset] Left hand orientation: "
-                  << iDynTree::toEigen(m_leftHand.transform.getRotation().asRPY()).transpose() << std::endl;
-                  
+         
     }
 
     // joint retargeting
@@ -318,17 +311,57 @@ void RetargetingClient::enableApproachingIfNecessary()
 
 bool RetargetingClient::getFeedback()
 {
-    if(m_useHandRetargeting)
+    if (m_useHandRetargeting)
     {
         auto getHandFeedback = [this](HandRetargeting& hand)
         {
             auto desiredHandPose = hand.port.read(false);
-            if(desiredHandPose != nullptr)
+            if (desiredHandPose != nullptr)
             {
-                yInfo() << "[RetargetingClient::getFeedback] Left hand desired pose: "
-                     << desiredHandPose->toString();
                 this->enableApproachingIfNecessary();
+
+                // iDynTree::Position deltaPos;
+                for (int i = 0; i < 3; ++i)
+                {
+                    // deltaPos(i) = desiredHandPose->operator[](i);
+                    desiredHandPose->operator[](i) +=  hand.transform.getPosition()(i);  
+                }
+
+                // Step 2: Update current position with delta (is this problematic?)
+                // iDynTree::Position currentPos = hand.transform.getPosition();
+                // iDynTree::Position newPos = currentPos;
+                // newPos(2) += deltaPos(2);
+
+                // // Step 3: Convert newPos to yarp::sig::Vector for smoothing
+                // yarp::sig::Vector posVec(3);
+                // for (int i = 0; i < 3; ++i)
+                // {
+                //     posVec[i] = newPos(i);
+                // }
+
+                // Step 4: Feed updated position to smoother
+                // hand.smoother.smoother->computeNextValues(posVec);
                 hand.smoother.smoother->computeNextValues(*desiredHandPose);
+
+                // Step 5: Get smoothed position
+                // const yarp::sig::Vector& smoothedPosVec = hand.smoother.smoother->getPos();
+
+                // Step 6: Convert smoothedPosVec back to iDynTree::Position
+                // iDynTree::Position smoothedPos;
+                // for (int i = 0; i < 3; ++i)
+                // {
+                //     smoothedPos(i) = smoothedPosVec[i];
+                // }
+
+                // Step 7: Update transform position with smoothed position
+                // hand.transform.setPosition(smoothedPos);
+
+                // yInfo() << "[RetargetingClient::getFeedback] current pos: " << currentPos.toString()
+                //         << ", delta: " << deltaPos.toString()
+                //         << ", smoothed pos: " << smoothedPos.toString();
+
+                // TODO: also update rotation, if needed
+                // hand.transform.setRotation(...);
             }
             convertYarpVectorPoseIntoTransform(hand.smoother.smoother->getPos(), hand.transform);
         };
@@ -336,6 +369,7 @@ bool RetargetingClient::getFeedback()
         getHandFeedback(m_leftHand);
         getHandFeedback(m_rightHand);
     }
+
 
     if (m_useJointRetargeting || m_useCoMHeightRetargeting)
     {
