@@ -512,14 +512,17 @@ bool WalkingModule::solveBLFIK(const iDynTree::Position &desiredCoMPosition,
                                                           m_retargetingClient->jointVelocities());
 
     iDynTree::Vector3 desiredHandVelocity;
-    desiredHandVelocity.zero();    
-    ok = ok && m_BLFIKSolver->setLeftHandSetPoint(m_retargetingClient->leftHandTransform().getPosition(), desiredHandVelocity);
-    ok = ok && m_BLFIKSolver->setRightHandSetPoint(m_retargetingClient->rightHandTransform().getPosition(), desiredHandVelocity);
+    desiredHandVelocity.zero();
+    iDynTree::Position desiredHandPosition = m_retargetingClient->leftHandTransform().getPosition();
+    desiredHandPosition(2) = std::clamp(desiredHandPosition(2), 0.7, 1.2);
+
+    ok = ok && m_BLFIKSolver->setLeftHandSetPoint(desiredHandPosition, desiredHandVelocity);
+    ok = ok && m_BLFIKSolver->setRightHandSetPoint(desiredHandPosition, desiredHandVelocity);
 
     ok = ok && m_BLFIKSolver->setDistanceSetPoint(0.4); //TODO move to config file or retrieve from HumanTrackerModule
 
     std::cerr << "[WalkingModule::solveBLFIK] Desired left hand position: "
-              << m_retargetingClient->leftHandTransform().getPosition().toString() << std::endl;
+              << desiredHandPosition(2) << std::endl;
 
 
     if (m_useRootLinkForHeight)

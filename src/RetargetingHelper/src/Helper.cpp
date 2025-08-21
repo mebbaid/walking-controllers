@@ -253,11 +253,13 @@ bool RetargetingClient::reset(WalkingFK& kinDynWrapper)
 
     if(m_useHandRetargeting)
     {
-        auto resetHandSmoother = [](auto& hand)
+        auto resetHandSmoother = [this](auto& hand)
         {
             
             iDynTree::toEigen(hand.yarpReadBuffer).template segment<3>(0) =
             iDynTree::toEigen(hand.transform.getPosition());
+            // m_Delta = hand.transform.getPosition()(2);
+            std::cerr << "[RetargetingClient::reset] Hand position delta: " << m_Delta << std::endl;
 
             iDynTree::toEigen(hand.yarpReadBuffer).template segment<3>(3) =
             iDynTree::toEigen(hand.transform.getRotation().asRPY());
@@ -316,16 +318,32 @@ bool RetargetingClient::getFeedback()
         auto getHandFeedback = [this](HandRetargeting& hand)
         {
             auto desiredHandPose = hand.port.read(false);
-            auto zOffset = 0.0;
-            auto smoothPos = hand.smoother.smoother->getPos();
+            // first three element
+            yarp::sig::Vector smoothPos;
+            smoothPos.resize(3);
+            smoothPos.zero();
+            // smoothPos(2) = 0.8;
             if (desiredHandPose != nullptr)
             {
+                for (size_t i = 0; i < 3; i++)
+                {
+                    smoothPos(i) = desiredHandPose->operator[](i);
+                }
+                std::cerr << "[RetargetingClient::getFeedback] Hand position smoothed NOT SMOOTHED: " << smoothPos(2)<< std::endl;
+                std::cerr << "[RetargetingClient::getFeedback] Hand position DELTA: " << m_Delta<< std::endl;
+            
                 this->enableApproachingIfNecessary();
-                zOffset = desiredHandPose->operator[](2);
-                smoothPos(2) += zOffset;
+                smoothPos(2) += m_Delta;
+                // smoothPos(2) = 0.8;
+                std::cerr << "[RetargetingClient::getFeedback] Hand position smoothed WITH DELTA: " << smoothPos(2)<< std::endl;
+            
                 hand.smoother.smoother->computeNextValues(smoothPos);
+                convertYarpVectorPoseIntoTransform(smoothPos, hand.transform);
+                std::cerr << "[RetargetingClient::getFeedback] Hand position smoothed: SMOOTHED " << smoothPos(2)<< std::endl;
+  
             }
-            convertYarpVectorPoseIntoTransform(smoothPos, hand.transform);
+            // convertYarpVectorPoseIntoTransform(smoothPos, hand.transform);
+            
         };
 
         getHandFeedback(m_leftHand);

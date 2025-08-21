@@ -86,7 +86,7 @@ private:
 
     HandRetargeting m_leftHand; /**< Left hand retargeting element */
     HandRetargeting m_rightHand; /**< Right hand retargeting element */
-
+    const double m_Delta{0.5}; /**< Offset of the hand position */
     /** Offset of the CoM Height coming from the user. It is required given the different size
      *  between the human and the robot */
     double m_comHeightInputOffset;
