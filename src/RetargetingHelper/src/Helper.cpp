@@ -317,15 +317,14 @@ bool RetargetingClient::getFeedback()
         {
             auto desiredHandPose = hand.port.read(false);
             auto zOffset = 0.0;
+            auto smoothPos = hand.smoother.smoother->getPos();
             if (desiredHandPose != nullptr)
             {
                 this->enableApproachingIfNecessary();
                 zOffset = desiredHandPose->operator[](2);
-
-                hand.smoother.smoother->computeNextValues(*desiredHandPose);
+                smoothPos(2) += zOffset;
+                hand.smoother.smoother->computeNextValues(smoothPos);
             }
-            auto smoothPos = hand.smoother.smoother->getPos();
-            smoothPos(2) += zOffset;
             convertYarpVectorPoseIntoTransform(smoothPos, hand.transform);
         };
 
