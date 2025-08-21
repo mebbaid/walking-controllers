@@ -322,18 +322,20 @@ bool RetargetingClient::getFeedback()
             yarp::sig::Vector smoothPos;
             smoothPos.resize(3);
             smoothPos.zero();
-            // smoothPos(2) = 0.8;
+            smoothPos(2) = 0.92;
             if (desiredHandPose != nullptr)
             {
-                for (size_t i = 0; i < 3; i++)
+                /*
+		for (size_t i = 0; i < 3; i++)
                 {
                     smoothPos(i) = desiredHandPose->operator[](i);
                 }
+		*/
                 std::cerr << "[RetargetingClient::getFeedback] Hand position smoothed NOT SMOOTHED: " << smoothPos(2)<< std::endl;
                 std::cerr << "[RetargetingClient::getFeedback] Hand position DELTA: " << m_Delta<< std::endl;
             
                 this->enableApproachingIfNecessary();
-                smoothPos(2) += m_Delta;
+                //smoothPos(2) += m_Delta;
                 // smoothPos(2) = 0.8;
                 std::cerr << "[RetargetingClient::getFeedback] Hand position smoothed WITH DELTA: " << smoothPos(2)<< std::endl;
             

@@ -519,7 +519,7 @@ bool WalkingModule::solveBLFIK(const iDynTree::Position &desiredCoMPosition,
     ok = ok && m_BLFIKSolver->setLeftHandSetPoint(desiredHandPosition, desiredHandVelocity);
     ok = ok && m_BLFIKSolver->setRightHandSetPoint(desiredHandPosition, desiredHandVelocity);
 
-    ok = ok && m_BLFIKSolver->setDistanceSetPoint(0.4); //TODO move to config file or retrieve from HumanTrackerModule
+    ok = ok && m_BLFIKSolver->setDistanceSetPoint(0.15); //TODO move to config file or retrieve from HumanTrackerModule
 
     std::cerr << "[WalkingModule::solveBLFIK] Desired left hand position: "
               << desiredHandPosition(2) << std::endl;
